@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -24,11 +24,48 @@ import RecipeManagement from './pages/RecipeManagement';
 import UserManagement from './pages/UserManagement';
 import PatientApply from './pages/PatientApply';
 
+// Entry router: when opening in browser, unauthenticated visitors land on Admin Login;
+// authenticated sessions immediately open the Admin Dashboard.
+const RootRedirect = () => {
+  const { admin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          height: '100vh',
+          width: '100vw',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f0f9ff',
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            border: '4px solid #bae6fd',
+            borderTopColor: '#0284c7',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+      </div>
+    );
+  }
+
+  return admin ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />;
+};
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Default entry when project opens in browser */}
+          <Route path="/" element={<RootRedirect />} />
+
           {/* Public Patient & Login Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/apply" element={<PatientApply />} />
@@ -96,10 +133,8 @@ function App() {
             <Route path="/recipe-management" element={<Navigate to="/recipes" replace />} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/user-management" element={<Navigate to="/users" replace />} />
-
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<RootRedirect />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

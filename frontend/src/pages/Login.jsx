@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,8 +10,15 @@ const Login = () => {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { login } = useAuth();
+  const { login, admin, loading } = useAuth();
   const navigate = useNavigate();
+
+  // If already logged in, redirect straight to admin dashboard
+  useEffect(() => {
+    if (!loading && admin) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [admin, loading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,7 +27,7 @@ const Login = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password');
     } finally {

@@ -7,7 +7,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedAdmin = localStorage.getItem('medy_admin');
+    // Clear any persistent legacy localStorage so opening browser starts at login
+    try {
+      localStorage.removeItem('medy_admin');
+    } catch (e) {}
+
+    // Check active browser session
+    const storedAdmin = sessionStorage.getItem('medy_admin');
     if (storedAdmin) {
       try {
         const parsed = JSON.parse(storedAdmin);
@@ -22,13 +28,13 @@ export const AuthProvider = ({ children }) => {
               if (fresh) {
                 const merged = { ...parsed, ...fresh };
                 setAdmin(merged);
-                localStorage.setItem('medy_admin', JSON.stringify(merged));
+                sessionStorage.setItem('medy_admin', JSON.stringify(merged));
               }
             })
             .catch(() => {});
         }
       } catch (e) {
-        localStorage.removeItem('medy_admin');
+        sessionStorage.removeItem('medy_admin');
       }
     }
     setLoading(false);
@@ -50,20 +56,21 @@ export const AuthProvider = ({ children }) => {
     }
 
     setAdmin(data);
-    localStorage.setItem('medy_admin', JSON.stringify(data));
+    sessionStorage.setItem('medy_admin', JSON.stringify(data));
     return data;
   };
 
   const updateProfileState = (updatedFields) => {
     setAdmin((prev) => {
       const merged = { ...prev, ...updatedFields };
-      localStorage.setItem('medy_admin', JSON.stringify(merged));
+      sessionStorage.setItem('medy_admin', JSON.stringify(merged));
       return merged;
     });
   };
 
   const logout = () => {
     setAdmin(null);
+    sessionStorage.removeItem('medy_admin');
     localStorage.removeItem('medy_admin');
   };
 
