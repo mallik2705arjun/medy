@@ -12,7 +12,6 @@ import {
   Building2,
   Copy,
   Check,
-  History,
   MapPin,
   Filter,
   User,
@@ -75,7 +74,6 @@ const MediCard = () => {
 
   // Modals
   const [viewingCard, setViewingCard] = useState(null);
-  const [auditCard, setAuditCard] = useState(null);
   const [cardToBlock, setCardToBlock] = useState(null);
   const [blockReason, setBlockReason] = useState('');
   const [blockSubmitting, setBlockSubmitting] = useState(false);
@@ -231,17 +229,6 @@ const MediCard = () => {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
-    });
-  };
-
-  const formatDateTime = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
@@ -500,7 +487,7 @@ const MediCard = () => {
           <div>
             <h3>Issued Patient Cards Registry ({displayedCards.length})</h3>
             <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-              {selectedHospitalName === 'All' ? 'Auditing cards across all network hospitals' : `Filtered for ${selectedHospitalName}`}
+              {selectedHospitalName === 'All' ? 'Managing and tracking patient cards across all network hospitals' : `Filtered for ${selectedHospitalName}`}
             </p>
           </div>
 
@@ -716,18 +703,6 @@ const MediCard = () => {
                         >
                           <Eye size={13} />
                           <span>View Card</span>
-                        </button>
-
-                        {/* Audit Trail Log */}
-                        <button
-                          type="button"
-                          className="super-btn-secondary"
-                          style={{ padding: '0.3rem 0.55rem', fontSize: '0.75rem' }}
-                          onClick={() => setAuditCard(card)}
-                          title="View issuance audit trail"
-                        >
-                          <History size={13} />
-                          <span>Audit</span>
                         </button>
 
                         {/* Super Admin Regulatory Freeze / Reinstate */}
@@ -960,125 +935,7 @@ const MediCard = () => {
         </div>
       )}
 
-      {/* Modal 2: Card Lifecycle Audit Trail */}
-      {auditCard && (
-        <div className="super-modal-backdrop" onClick={() => setAuditCard(null)}>
-          <div className="super-modal-card" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="super-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    background: '#e0f2fe',
-                    color: '#0284c7',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <History size={18} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>Card Issuance Audit Trail</h3>
-                  <span style={{ fontSize: '0.75rem', color: '#0284c7', fontFamily: 'monospace', fontWeight: 700 }}>
-                    {auditCard.cardId}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="modal-close-icon"
-                onClick={() => setAuditCard(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="super-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #eaeff5' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Issuing Hospital</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{auditCard.hospitalName}</div>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Cardholder</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{auditCard.patientName}</div>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Status</span>
-                    <div style={{ fontWeight: 700, color: auditCard.status === 'Active' ? '#10b981' : '#ef4444' }}>
-                      {auditCard.status}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.75rem' }}>
-                  Recorded Audit Events ({auditCard.history?.length || 0})
-                </h4>
-                {!auditCard.history || auditCard.history.length === 0 ? (
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>No historical events recorded for this card.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                    {auditCard.history.map((h, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          background: '#f8fafc',
-                          border: '1px solid #eaeff5',
-                          borderRadius: '8px',
-                          padding: '0.65rem 0.85rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.2rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span
-                            style={{
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              color: '#0284c7',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            {h.action}
-                          </span>
-                          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                            {formatDateTime(h.timestamp)}
-                          </span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.825rem', color: '#334155' }}>
-                          {h.note || `Action ${h.action} recorded.`}
-                        </p>
-                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                          Performed by: {h.performedBy || 'Super Admin'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="super-modal-footer">
-              <button
-                type="button"
-                className="super-btn-primary"
-                onClick={() => setAuditCard(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 3: Regulatory Freeze / Unblock Card */}
+      {/* Modal 2: Regulatory Freeze / Unblock Card */}
       {cardToBlock && (
         <div className="super-modal-backdrop" onClick={() => setCardToBlock(null)}>
           <div className="super-modal-card" style={{ maxWidth: '460px' }} onClick={(e) => e.stopPropagation()}>
