@@ -1,0 +1,77 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [admin, setAdmin] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const storedAdmin = localStorage.getItem('medy_admin');
+    if (storedAdmin) {
+      try {
+        const parsed = JSON.parse(storedAdmin);
+        setAdmin(parsed);
+        // Refresh profile in background if token exists
+        if (parsed?.token) {
+          fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${parsed.token}` },
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((fresh) => {
+              if (fresh) {
+                const merged = { ...parsed, ...fresh };
+                setAdmin(merged);
+                localStorage.setItem('medy_admin', JSON.stringify(merged));
+              }
+            })
+            .catch(() => {});
+        }
+      } catch (e) {
+        localStorage.removeItem('medy_admin');
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const login = async (email, password) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Login failed');
+    }
+
+    setAdmin(data);
+    localStorage.setItem('medy_admin', JSON.stringify(data));
+    return data;
+  };
+
+  const updateProfileState = (updatedFields) => {
+    setAdmin((prev) => {
+      const merged = { ...prev, ...updatedFields };
+      localStorage.setItem('medy_admin', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
+  const logout = () => {
+    setAdmin(null);
+    localStorage.removeItem('medy_admin');
+  };
+
+  return (
+    <AuthContext.Provider value={{ admin, login, logout, loading, updateProfileState }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
