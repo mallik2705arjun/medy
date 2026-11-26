@@ -26,8 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=160&auto=format&fit=crop&q=80';
+const DEFAULT_AVATAR = '';
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -399,14 +398,20 @@ const Navbar = ({ collapsed, setCollapsed }) => {
                 aria-label="Admin Profile Menu"
               >
                 <div className="super-avatar-badge-wrap">
-                  <img
-                    src={admin?.avatar || DEFAULT_AVATAR}
-                    alt="Admin Avatar"
-                    className="super-avatar-img"
-                    onError={(e) => {
-                      e.target.src = DEFAULT_AVATAR;
-                    }}
-                  />
+                  {admin?.avatar ? (
+                    <img
+                      src={admin.avatar}
+                      alt="Admin Avatar"
+                      className="super-avatar-img"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="super-avatar-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0f2fe', color: '#0284c7' }}>
+                      <User size={18} />
+                    </div>
+                  )}
                   <span className="super-online-dot" title="Active Online" />
                 </div>
                 <div className="super-user-meta">
@@ -423,13 +428,19 @@ const Navbar = ({ collapsed, setCollapsed }) => {
                 <div className="super-profile-dropdown">
                   <div className="profile-dropdown-header">
                     <div className="dropdown-avatar-lg">
-                      <img
-                        src={admin?.avatar || DEFAULT_AVATAR}
-                        alt="Super Admin"
-                        onError={(e) => {
-                          e.target.src = DEFAULT_AVATAR;
-                        }}
-                      />
+                      {admin?.avatar ? (
+                        <img
+                          src={admin.avatar}
+                          alt="Super Admin"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e0f2fe', color: '#0284c7' }}>
+                          <User size={24} />
+                        </div>
+                      )}
                     </div>
                     <div className="dropdown-header-info">
                       <span className="dropdown-name">
@@ -614,21 +625,39 @@ const Navbar = ({ collapsed, setCollapsed }) => {
                       }}
                     >
                       <div style={{ position: 'relative' }}>
-                        <img
-                          src={avatar || DEFAULT_AVATAR}
-                          alt="Super Admin"
-                          style={{
-                            width: '64px',
-                            height: '64px',
-                            borderRadius: '50%',
-                            objectFit: 'cover',
-                            border: '3px solid #0284c7',
-                            display: 'block',
-                          }}
-                          onError={(e) => {
-                            e.target.src = DEFAULT_AVATAR;
-                          }}
-                        />
+                        {avatar ? (
+                          <img
+                            src={avatar}
+                            alt="Super Admin"
+                            style={{
+                              width: '64px',
+                              height: '64px',
+                              borderRadius: '50%',
+                              objectFit: 'cover',
+                              border: '3px solid #0284c7',
+                              display: 'block',
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '64px',
+                              height: '64px',
+                              borderRadius: '50%',
+                              background: '#e0f2fe',
+                              border: '3px solid #0284c7',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#0284c7',
+                            }}
+                          >
+                            <User size={30} />
+                          </div>
+                        )}
                         <span
                           style={{
                             position: 'absolute',

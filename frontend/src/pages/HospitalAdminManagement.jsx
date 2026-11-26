@@ -16,7 +16,6 @@ import {
   X,
   Eye,
   EyeOff,
-  RefreshCw,
   KeyRound,
   Power,
   Check,
@@ -54,7 +53,6 @@ const HospitalAdminManagement = () => {
     fullName: '',
     email: '',
     username: '',
-    password: '',
     phone: '',
     hospitalId: '',
     designation: 'Hospital Administrator',
@@ -73,7 +71,6 @@ const HospitalAdminManagement = () => {
     password: '',
   });
 
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Fetch all hospital admins & hospitals
@@ -115,17 +112,6 @@ const HospitalAdminManagement = () => {
     }
   }, [admin]);
 
-  // Generate strong random password for creation
-  const handleGeneratePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    let pass = '';
-    for (let i = 0; i < 10; i++) {
-      pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setCreateForm((prev) => ({ ...prev, password: pass }));
-    setShowCreatePassword(true);
-  };
-
   // Generate strong random password for edit/reset
   const handleGenerateEditPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
@@ -143,13 +129,10 @@ const HospitalAdminManagement = () => {
     setCreateForm({
       fullName: '',
       email: '',
-      username: '',
-      password: '',
       phone: '',
+      role: 'Hospital Administrator',
       hospitalId: hospitals[0]?._id || '',
-      designation: 'Hospital Administrator',
       status: 'Active',
-      avatar: DEFAULT_AVATAR,
     });
     setIsCreateOpen(true);
   };
@@ -167,10 +150,6 @@ const HospitalAdminManagement = () => {
       setFormFeedback({ type: 'error', message: 'A valid email address is required.' });
       return;
     }
-    if (!createForm.password || createForm.password.length < 6) {
-      setFormFeedback({ type: 'error', message: 'Password must be at least 6 characters.' });
-      return;
-    }
     if (!createForm.hospitalId) {
       setFormFeedback({ type: 'error', message: 'Please select an assigned hospital.' });
       return;
@@ -178,13 +157,23 @@ const HospitalAdminManagement = () => {
 
     setSubmitting(true);
     try {
+      const payload = {
+        fullName: createForm.fullName.trim(),
+        email: createForm.email.trim(),
+        phone: createForm.phone ? createForm.phone.trim() : '+91 98765 00000',
+        role: 'HOSPITAL_ADMIN',
+        designation: createForm.role || 'Hospital Administrator',
+        hospitalId: createForm.hospitalId,
+        status: createForm.status || 'Active',
+      };
+
       const res = await fetch('/api/hospital-admins', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${admin?.token}`,
         },
-        body: JSON.stringify(createForm),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -192,9 +181,12 @@ const HospitalAdminManagement = () => {
         throw new Error(data.message || 'Failed to create hospital administrator');
       }
 
+      const emailNotice = data.emailNotification?.success
+        ? ` • Appointment email dispatched to ${data.email} via Nodemailer`
+        : '';
       setFormFeedback({
         type: 'success',
-        message: `Hospital Administrator ${data.fullName} (${data.adminId}) created successfully!`,
+        message: `Hospital Administrator ${data.fullName} (${data.adminId}) created successfully!${emailNotice}`,
       });
 
       fetchData();
@@ -358,15 +350,6 @@ const HospitalAdminManagement = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.65rem' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={fetchData}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}
-          >
-            <RefreshCw size={15} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
-          </button>
           <button
             type="button"
             className="super-btn-primary"
@@ -824,7 +807,74 @@ const HospitalAdminManagement = () => {
                 className="super-modal-body"
                 style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
               >
-                {/* 1. Target Hospital Selection */}
+                {/* Row 1: Full Name & Official Email */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>
+                      Administrator Name <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      placeholder="e.g. Dr. Sarah Jenkins"
+                      value={createForm.fullName}
+                      onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>
+                      Email Address <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      className="form-control"
+                      placeholder="e.g. s.jenkins@apollo.com"
+                      value={createForm.email}
+                      onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Phone Number & Hospital Admin Role */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>
+                      Phone Number (Ph No.) <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      className="form-control"
+                      placeholder="e.g. +91 98765 43210"
+                      value={createForm.phone}
+                      onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>
+                      Admin Role
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      className="form-control"
+                      value="Hospital Administrator"
+                      style={{
+                        background: '#f8fafc',
+                        color: '#0369a1',
+                        fontWeight: 600,
+                        cursor: 'not-allowed',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Assigned Hospital */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label" style={{ fontWeight: 600 }}>
                     Assigned Hospital Facility <span style={{ color: '#ef4444' }}>*</span>
@@ -847,149 +897,22 @@ const HospitalAdminManagement = () => {
                   </select>
                 </div>
 
-                {/* 2. Personal Information */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600 }}>
-                      Administrator Full Name <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      className="form-control"
-                      placeholder="e.g. Dr. Sarah Jenkins"
-                      value={createForm.fullName}
-                      onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600 }}>
-                      Administrative Designation
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g. Chief Medical Officer, Operations Director"
-                      value={createForm.designation}
-                      onChange={(e) =>
-                        setCreateForm({ ...createForm, designation: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* 3. Credentials (Email & Username) */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600 }}>
-                      Official Email Address <span style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      className="form-control"
-                      placeholder="e.g. s.jenkins@apollo.com"
-                      value={createForm.email}
-                      onChange={(e) => {
-                        const emailVal = e.target.value;
-                        setCreateForm({
-                          ...createForm,
-                          email: emailVal,
-                          username: createForm.username || emailVal.split('@')[0],
-                        });
-                      }}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600 }}>
-                      Login Username
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g. sarah.jenkins"
-                      value={createForm.username}
-                      onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* 4. Password & Phone */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '0.35rem',
-                      }}
-                    >
-                      <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>
-                        Initial Password <span style={{ color: '#ef4444' }}>*</span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleGeneratePassword}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#0284c7',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.2rem',
-                        }}
-                      >
-                        <KeyRound size={12} /> Auto-Generate
-                      </button>
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type={showCreatePassword ? 'text' : 'password'}
-                        required
-                        className="form-control"
-                        placeholder="Min 6 characters"
-                        value={createForm.password}
-                        onChange={(e) =>
-                          setCreateForm({ ...createForm, password: e.target.value })
-                        }
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCreatePassword(!showCreatePassword)}
-                        style={{
-                          position: 'absolute',
-                          right: '12px',
-                          top: '50%',
-                          transform: 'translateY(-50%)',
-                          background: 'none',
-                          border: 'none',
-                          color: '#94a3b8',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {showCreatePassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontWeight: 600 }}>
-                      Mobile / Contact Phone
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="e.g. +91 98765 43210"
-                      value={createForm.phone}
-                      onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
-                    />
-                  </div>
+                {/* Nodemailer Email Notification Banner */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '8px',
+                  padding: '0.75rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.78rem',
+                  color: '#0369a1',
+                }}>
+                  <Mail size={15} style={{ flexShrink: 0 }} />
+                  <span>
+                    A secure initial login password will be automatically generated and emailed to <strong>{createForm.email || 'this administrator'}</strong> via Nodemailer upon creation.
+                  </span>
                 </div>
               </div>
 
@@ -1092,13 +1015,20 @@ const HospitalAdminManagement = () => {
 
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label className="form-label" style={{ fontWeight: 600 }}>
-                      Administrative Designation
+                      Admin Role
                     </label>
                     <input
                       type="text"
+                      readOnly
+                      disabled
                       className="form-control"
-                      value={editForm.designation}
-                      onChange={(e) => setEditForm({ ...editForm, designation: e.target.value })}
+                      value="Hospital Administrator"
+                      style={{
+                        background: '#f8fafc',
+                        color: '#0369a1',
+                        fontWeight: 600,
+                        cursor: 'not-allowed',
+                      }}
                     />
                   </div>
                 </div>
@@ -1172,7 +1102,7 @@ const HospitalAdminManagement = () => {
                           padding: 0,
                         }}
                       >
-                        <RefreshCw size={12} /> Auto-Generate
+                        <KeyRound size={12} /> Auto-Generate
                       </button>
                     </div>
                     <div style={{ position: 'relative' }}>

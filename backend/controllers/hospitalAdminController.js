@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const Admin = require('../models/Admin');
 const Hospital = require('../models/Hospital');
 const AuditLog = require('../models/AuditLog');
+const { sendHospitalAdminAppointmentEmail } = require('../utils/emailService');
 
 // Helper to generate a unique Hospital Admin ID (e.g. HADM-201)
 const generateHospitalAdminId = async () => {
@@ -113,14 +114,14 @@ const createHospitalAdmin = async (req, res) => {
       status,
     } = req.body;
 
-    if (!fullName || !email || !password || !hospitalId) {
+    if (!fullName || !email || !hospitalId) {
       return res.status(400).json({
-        message: 'Full Name, Email, Password, and Assigned Hospital are required.',
+        message: 'Full Name, Email, and Assigned Hospital are required.',
       });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+    if (password && password.trim().length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long if specified.' });
     }
 
     // Verify hospital exists by ID or name
@@ -139,6 +140,11 @@ const createHospitalAdmin = async (req, res) => {
     if (!hospital) {
       return res.status(404).json({ message: 'Selected hospital does not exist.' });
     }
+
+    // Auto-generate secure temporary password if initial password option was omitted
+    const rawPassword = (password && password.trim().length >= 6)
+      ? password.trim()
+      : `${hospital.code.replace(/[^A-Za-z0-9]/g, '')}@${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Check duplicate email
     const existingEmail = await Admin.findOne({ email: email.trim().toLowerCase() });
@@ -161,7 +167,7 @@ const createHospitalAdmin = async (req, res) => {
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(rawPassword, salt);
 
     const newAdmin = await Admin.create({
       adminId,
@@ -182,6 +188,20 @@ const createHospitalAdmin = async (req, res) => {
       dateJoined: new Date(),
     });
 
+    // Dispatch official appointment notification email via Nodemailer
+    const portalUrl = `${req.protocol}://${req.get('host')}/login`;
+    const emailResult = await sendHospitalAdminAppointmentEmail({
+      to: newAdmin.email,
+      adminName: newAdmin.fullName,
+      adminId: newAdmin.adminId,
+      hospitalName: hospital.name,
+      hospitalCode: hospital.code,
+      city: hospital.city,
+      hospitalPhone: hospital.phone,
+      tempPassword: rawPassword,
+      portalUrl,
+    });
+
     // Record audit trail
     try {
       await AuditLog.create({
@@ -189,20 +209,23 @@ const createHospitalAdmin = async (req, res) => {
         actor: req.admin?.fullName || req.admin?.username || 'Super Administrator',
         role: req.admin?.role || 'MEDY_ADMIN',
         target: `${newAdmin.fullName} (${newAdmin.adminId})`,
-        details: `Super Admin provisioned hospital administrator account for ${hospital.name} (Code: ${hospital.code}, Login: ${newAdmin.email})`,
+        details: `Super Admin provisioned hospital administrator account for ${hospital.name} (Code: ${hospital.code}, Login: ${newAdmin.email}). Nodemailer dispatch: ${emailResult.success ? 'Delivered' : 'Failed'} (${emailResult.messageId || emailResult.error})`,
         ipAddress: req.ip || '127.0.0.1',
-        status: 'Success',
+        status: emailResult.success ? 'Success' : 'Warning',
       });
     } catch (auditErr) {
       console.error('Audit log failed for createHospitalAdmin:', auditErr);
     }
 
-    // Return created admin without password
+    // Return created admin without password along with email notification info
     const returned = await Admin.findById(newAdmin._id)
       .populate('hospitalId', 'name code city phone email')
       .select('-password');
 
-    res.status(201).json(returned);
+    res.status(201).json({
+      ...returned.toObject(),
+      emailNotification: emailResult,
+    });
   } catch (error) {
     console.error('Create Hospital Admin Error:', error);
     res.status(500).json({ message: error.message || 'Failed to create hospital administrator' });

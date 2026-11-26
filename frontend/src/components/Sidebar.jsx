@@ -20,11 +20,12 @@ import {
   AlertCircle,
   CheckCircle2,
   UserCheck,
+  User,
+  Microscope,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=160&auto=format&fit=crop&q=80';
+const DEFAULT_AVATAR = '';
 
 const INITIAL_NOTIFICATIONS = [
   {
@@ -71,7 +72,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const [phone, setPhone] = useState('');
   const [accountStatus, setAccountStatus] = useState('Active');
   const [dateJoined, setDateJoined] = useState('March 14, 2024');
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+  const [avatar, setAvatar] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -92,7 +93,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       setEmail(admin.email || 'admin@medy.com');
       setPhone(admin.phone || '+91 98765 43210');
       setAccountStatus(admin.status || 'Active');
-      setAvatar(admin.avatar || DEFAULT_AVATAR);
+      setAvatar(admin.avatar || '');
       if (admin.dateJoined || admin.createdAt) {
         setDateJoined(
           new Date(admin.dateJoined || admin.createdAt).toLocaleDateString('en-US', {
@@ -185,7 +186,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
           username: username.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          avatar: avatar.trim(),
+          avatar: '',
           status: accountStatus,
           currentPassword: currentPassword || undefined,
           newPassword: newPassword || undefined,
@@ -240,6 +241,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     { label: 'Patient Management', to: '/patients', icon: Users },
     { label: 'Medy Card Management', to: '/medi-card', icon: CreditCard },
     { label: 'Lab Management', to: '/lab-tests', icon: FlaskConical },
+    { label: 'Partnered Labs', to: '/partnered-labs', icon: Microscope },
     { label: 'Reports & Analytics', to: '/reports', icon: BarChart3 },
     { label: 'Audit Logs', to: '/audit-logs', icon: History },
   ];
@@ -287,21 +289,39 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
             }}
           >
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <img
-                src={admin?.avatar || DEFAULT_AVATAR}
-                alt="Admin Profile"
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '1.5px solid rgba(255, 255, 255, 0.85)',
-                  display: 'block',
-                }}
-                onError={(e) => {
-                  e.target.src = DEFAULT_AVATAR;
-                }}
-              />
+              {admin?.avatar ? (
+                <img
+                  src={admin.avatar}
+                  alt="Admin Profile"
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1.5px solid rgba(255, 255, 255, 0.85)',
+                    display: 'block',
+                  }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.65)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                  }}
+                >
+                  <User size={18} />
+                </div>
+              )}
               <span
                 style={{
                   position: 'absolute',
@@ -311,7 +331,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                   height: '9px',
                   borderRadius: '50%',
                   background: '#10b981',
-                  border: '1.5px solid #1e3a8a',
+                  border: '1.5px solid #0a1128',
                   boxShadow: '0 0 4px #10b981',
                 }}
               />
@@ -399,7 +419,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: '1.5px solid #0284c7',
+                    border: '1.5px solid #0a1128',
                   }}
                 >
                   {unreadCount}
@@ -674,34 +694,58 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
 
                 {modalTab === 'general' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.95rem' }}>
-                    {/* Avatar preview & change */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <img
-                        src={avatar || DEFAULT_AVATAR}
-                        alt="Admin Avatar"
+                    {/* Profile Header Badge */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '1rem',
+                        padding: '0.85rem 1rem',
+                        background: '#f8fafc',
+                        borderRadius: '10px',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    >
+                      <div
                         style={{
-                          width: '56px',
-                          height: '56px',
+                          width: '52px',
+                          height: '52px',
                           borderRadius: '50%',
-                          objectFit: 'cover',
-                          border: '2px solid #e2e8f0',
+                          background: '#e0f2fe',
+                          border: '2px solid #bae6fd',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#0284c7',
+                          flexShrink: 0,
                         }}
-                        onError={(e) => {
-                          e.target.src = DEFAULT_AVATAR;
-                        }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.25rem' }}>
-                          Avatar Image URL
-                        </label>
-                        <input
-                          type="url"
-                          className="super-search-input"
-                          style={{ width: '100%', height: '36px', padding: '0.4rem 0.65rem' }}
-                          value={avatar}
-                          onChange={(e) => setAvatar(e.target.value)}
-                          placeholder="https://..."
-                        />
+                      >
+                        <User size={26} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>
+                            {fullName || 'Super Administrator'}
+                          </span>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.15rem 0.45rem',
+                              borderRadius: '4px',
+                              background: '#e0f2fe',
+                              color: '#0284c7',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                            }}
+                          >
+                            <ShieldCheck size={11} /> MEDY_ADMIN
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                          Administrator ID: <strong style={{ color: '#0284c7' }}>{adminId}</strong> &bull; Status: <strong style={{ color: '#16a34a' }}>{accountStatus}</strong>
+                        </div>
                       </div>
                     </div>
 

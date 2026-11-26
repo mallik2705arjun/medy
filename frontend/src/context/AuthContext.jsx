@@ -17,6 +17,9 @@ export const AuthProvider = ({ children }) => {
     if (storedAdmin) {
       try {
         const parsed = JSON.parse(storedAdmin);
+        if (parsed?.avatar && parsed.avatar.includes('unsplash.com')) {
+          parsed.avatar = '';
+        }
         setAdmin(parsed);
         // Refresh profile in background if token exists
         if (parsed?.token) {
@@ -41,18 +44,29 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
+    let response;
+    try {
+      response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (networkErr) {
+      throw new Error('Unable to connect to the backend server. Please ensure the server is running on port 5000.');
+    }
 
-    const data = await response.json();
+    let data = null;
+    try {
+      const rawText = await response.text();
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch (parseErr) {
+      data = { message: `Server error (${response.status || 'unknown'}: ${response.statusText || 'Unexpected response'})` };
+    }
 
     if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
+      throw new Error(data?.message || `Login failed (Status: ${response.status})`);
     }
 
     setAdmin(data);

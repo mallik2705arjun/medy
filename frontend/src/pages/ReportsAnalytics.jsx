@@ -98,32 +98,12 @@ const ReportsAnalytics = () => {
         </div>
 
         <div className="dashboard-controls-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          {/* Quick Days Selector Pills */}
-          <div className="view-mode-toggle" style={{ display: 'flex' }}>
-            {TIME_RANGES.map((r) => (
-              <button
-                key={r.label}
-                type="button"
-                className={`mode-btn ${timeRange === r.label ? 'active' : ''}`}
-                onClick={() => setTimeRange(r.label)}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.78rem',
-                  fontWeight: timeRange === r.label ? 700 : 500,
-                  cursor: 'pointer',
-                }}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Fallback Dropdown Selector */}
+          {/* Dropdown Selector */}
           <select
             className="super-select-dropdown"
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            style={{ minWidth: '150px' }}
+            style={{ minWidth: '160px' }}
           >
             {TIME_RANGES.map((r) => (
               <option key={r.label} value={r.label}>

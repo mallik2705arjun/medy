@@ -1,8 +1,31 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const Hospital = require('../models/Hospital');
 const MediCard = require('../models/MediCard');
 const Patient = require('../models/Patient');
 const AuditLog = require('../models/AuditLog');
+const Admin = require('../models/Admin');
+const PartneredLab = require('../models/PartneredLab');
+const Appointment = require('../models/Appointment');
+const LabTest = require('../models/LabTest');
+const { sendHospitalAdminAppointmentEmail } = require('../utils/emailService');
+
+// Helper to generate a unique Hospital Admin ID (e.g. HADM-005)
+const generateHospitalAdminId = async () => {
+  let unique = false;
+  let adminId = '';
+  let counter = 1;
+  const count = await Admin.countDocuments({ role: 'HOSPITAL_ADMIN' });
+  counter = count + 1;
+  while (!unique) {
+    const padded = String(counter).padStart(3, '0');
+    adminId = `HADM-${padded}`;
+    const exists = await Admin.findOne({ adminId });
+    if (!exists) unique = true;
+    else counter++;
+  }
+  return adminId;
+};
 
 // Helper to generate hospital code if not provided
 const generateHospitalCode = async () => {
@@ -17,12 +40,23 @@ const generateHospitalCode = async () => {
   return code;
 };
 
-// @desc    Register a new hospital
+// @desc    Register a new hospital & appoint hospital administrator with email notification
 // @route   POST /api/hospitals
 // @access  Private
 const createHospital = async (req, res) => {
   try {
-    const { name, code, city, address, phone, email } = req.body;
+    const {
+      name,
+      code,
+      city,
+      address,
+      phone,
+      email,
+      adminName,
+      adminEmail,
+      adminPhone,
+      adminPassword,
+    } = req.body;
 
     if (!name || !city || !phone) {
       return res.status(400).json({ message: 'Hospital name, city, and phone are required' });
@@ -49,13 +83,98 @@ const createHospital = async (req, res) => {
       status: 'Active',
     });
 
+    // Determine target admin email: prioritized adminEmail, fallback to official email if it contains @
+    const targetAdminEmail = (adminEmail && adminEmail.trim())
+      ? adminEmail.trim().toLowerCase()
+      : (email && email.trim() && email.includes('@') ? email.trim().toLowerCase() : '');
+
+    let assignedAdmin = null;
+    let emailResult = null;
+    const rawPassword = (adminPassword && adminPassword.trim().length >= 6)
+      ? adminPassword.trim()
+      : `${hospitalCode.replace(/[^A-Za-z0-9]/g, '')}@2026`;
+
+    if (targetAdminEmail) {
+      let existingAdmin = await Admin.findOne({ email: targetAdminEmail });
+
+      if (existingAdmin) {
+        // Assign existing administrator account to this new hospital
+        existingAdmin.hospitalId = newHospital._id;
+        existingAdmin.hospitalName = newHospital.name;
+        existingAdmin.hospitalCode = newHospital.code;
+        existingAdmin.role = 'HOSPITAL_ADMIN';
+        if (adminName && adminName.trim()) existingAdmin.fullName = adminName.trim();
+        await existingAdmin.save();
+        assignedAdmin = existingAdmin;
+      } else {
+        // Create new hospital admin account
+        const adminId = await generateHospitalAdminId();
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(rawPassword, salt);
+
+        let finalUsername = targetAdminEmail.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '_');
+        const userExists = await Admin.findOne({ username: finalUsername });
+        if (userExists) {
+          finalUsername = `${finalUsername}_${Math.floor(100 + Math.random() * 900)}`;
+        }
+
+        const newAdmin = await Admin.create({
+          adminId,
+          fullName: (adminName && adminName.trim())
+            ? adminName.trim()
+            : `${newHospital.name} Administrator`,
+          username: finalUsername,
+          email: targetAdminEmail,
+          password: hashedPassword,
+          role: 'HOSPITAL_ADMIN',
+          phone: (adminPhone && adminPhone.trim()) ? adminPhone.trim() : newHospital.phone,
+          designation: 'Hospital Administrator',
+          hospitalId: newHospital._id,
+          hospitalName: newHospital.name,
+          hospitalCode: newHospital.code,
+          status: 'Active',
+          avatar: 'https://images.unsplash.com/photo-1594824813576-4d0f62e873cf?w=160&auto=format&fit=crop&q=80',
+          dateJoined: new Date(),
+        });
+        assignedAdmin = newAdmin;
+      }
+
+      // Dispatch appointment notification email via Nodemailer
+      const portalUrl = `${req.protocol}://${req.get('host')}/login`;
+      emailResult = await sendHospitalAdminAppointmentEmail({
+        to: targetAdminEmail,
+        adminName: assignedAdmin.fullName,
+        adminId: assignedAdmin.adminId,
+        hospitalName: newHospital.name,
+        hospitalCode: newHospital.code,
+        city: newHospital.city,
+        hospitalPhone: newHospital.phone,
+        tempPassword: rawPassword,
+        portalUrl,
+      });
+
+      try {
+        await AuditLog.create({
+          action: 'HOSPITAL_ADMIN_APPOINTED',
+          actor: req.admin?.email || 'admin@medy.com',
+          role: 'Super Administrator',
+          target: `${assignedAdmin.fullName} (${targetAdminEmail})`,
+          details: `Appointed as Hospital Administrator for ${newHospital.name} (${newHospital.code}). Nodemailer dispatch: ${emailResult.success ? 'Delivered' : 'Failed'} (${emailResult.messageId || emailResult.error})`,
+          ipAddress: req.ip || '127.0.0.1',
+          status: emailResult.success ? 'Success' : 'Warning',
+        });
+      } catch (logErr) {
+        console.error('AuditLog error:', logErr.message);
+      }
+    }
+
     try {
       await AuditLog.create({
         action: 'HOSPITAL_CREATED',
         actor: req.admin?.email || 'admin@medy.com',
         role: 'Super Administrator',
         target: `${newHospital.name} (${newHospital.code})`,
-        details: `Registered partner hospital in ${newHospital.city} with status Active`,
+        details: `Registered partner hospital in ${newHospital.city} with status Active${targetAdminEmail ? ` • Appointed Admin: ${targetAdminEmail}` : ''}`,
         ipAddress: req.ip || '127.0.0.1',
         status: 'Success',
       });
@@ -63,7 +182,16 @@ const createHospital = async (req, res) => {
       console.error('AuditLog error:', e.message);
     }
 
-    res.status(201).json(newHospital);
+    res.status(201).json({
+      ...newHospital.toObject(),
+      assignedAdmin: assignedAdmin ? {
+        adminId: assignedAdmin.adminId,
+        fullName: assignedAdmin.fullName,
+        email: assignedAdmin.email,
+        role: assignedAdmin.role,
+      } : null,
+      emailNotification: emailResult,
+    });
   } catch (error) {
     console.error('Create Hospital Error:', error);
     res.status(500).json({ message: error.message || 'Failed to create hospital' });
@@ -192,6 +320,20 @@ const updateHospitalCardColor = async (req, res) => {
       );
     }
 
+    try {
+      await AuditLog.create({
+        action: 'HOSPITAL_CARD_COLOR_UPDATED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: 'Super Administrator',
+        target: `${hospital.name} (${hospital.code})`,
+        details: `Updated distinct Medy card color theme to ${cardColor}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Success',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     res.json(hospital);
   } catch (error) {
     console.error('Update Hospital Card Color Error:', error);
@@ -301,7 +443,7 @@ const toggleHospitalStatus = async (req, res) => {
   }
 };
 
-// @desc    Get single hospital by ID
+// @desc    Get single hospital by ID with full related admin panel details
 // @route   GET /api/hospitals/:id
 // @access  Private (Super Admin)
 const getHospitalById = async (req, res) => {
@@ -313,15 +455,71 @@ const getHospitalById = async (req, res) => {
     }
 
     const nameKey = new RegExp(`^${hospital.name.trim()}$`, 'i');
-    const [patientCount, cardsCount] = await Promise.all([
-      Patient.countDocuments({ hospitalName: nameKey }),
-      MediCard.countDocuments({ hospitalName: nameKey }),
+
+    // Query all related entities in parallel across the admin panel
+    const [
+      patients,
+      cards,
+      hospitalAdmins,
+      partneredLabs,
+      appointments,
+      labTests,
+      auditLogs,
+    ] = await Promise.all([
+      Patient.find({ hospitalName: nameKey }).sort({ createdAt: -1 }).lean(),
+      MediCard.find({ hospitalName: nameKey }).sort({ createdAt: -1 }).lean(),
+      Admin.find({
+        $or: [
+          { hospitalId: hospital._id },
+          { hospitalName: nameKey },
+          { hospitalCode: hospital.code },
+        ],
+        role: { $in: ['HOSPITAL_ADMIN', 'DOCTOR', 'STAFF'] },
+      }).select('-password').sort({ createdAt: -1 }).lean(),
+      PartneredLab.find({
+        $or: [
+          { hospitals: hospital._id },
+          { 'hospitals._id': hospital._id },
+        ],
+      }).lean(),
+      Appointment.find({ hospitalName: nameKey }).sort({ appointmentDate: -1, createdAt: -1 }).lean(),
+      LabTest.find({ hospitalName: nameKey }).sort({ scheduledDate: -1, createdAt: -1 }).lean(),
+      AuditLog.find({
+        $or: [
+          { target: new RegExp(hospital.name, 'i') },
+          { target: new RegExp(hospital.code, 'i') },
+          { details: new RegExp(hospital.name, 'i') },
+        ],
+      }).sort({ timestamp: -1 }).limit(100).lean(),
     ]);
+
+    // Compute stats
+    const stats = {
+      totalPatients: patients.length,
+      totalCards: cards.length,
+      activeCards: cards.filter((c) => c.status === 'Active').length,
+      totalAdmins: hospitalAdmins.filter((a) => a.role === 'HOSPITAL_ADMIN').length,
+      totalPartneredLabs: partneredLabs.length,
+      totalAppointments: appointments.length,
+      scheduledAppointments: appointments.filter((a) => a.status === 'Scheduled').length,
+      completedAppointments: appointments.filter((a) => a.status === 'Completed').length,
+      totalLabTests: labTests.length,
+      completedLabReports: labTests.filter((t) => t.status === 'Report Completed').length,
+      pendingLabTests: labTests.filter((t) => t.status !== 'Report Completed' && t.status !== 'Cancelled').length,
+    };
 
     res.json({
       ...hospital,
-      totalPatientsCount: patientCount,
-      cardsIssuedCount: cardsCount,
+      stats,
+      totalPatientsCount: patients.length,
+      cardsIssuedCount: cards.length,
+      patients,
+      cards,
+      hospitalAdmins,
+      partneredLabs,
+      appointments,
+      labTests,
+      auditLogs,
     });
   } catch (error) {
     console.error('Get Hospital Details Error:', error);

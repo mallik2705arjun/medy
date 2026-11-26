@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -13,6 +14,12 @@ import {
   Activity,
   Layers,
   Printer,
+  Microscope,
+  Users,
+  MapPin,
+  ArrowRight,
+  Eye,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -202,14 +209,16 @@ const getTestBiomarkers = (testName = '') => {
 
 const LabTests = () => {
   const { admin, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Active navigation mode from the 4 metric cards:
-  // 'all' | 'completed' | 'in_analysis' | 'catalog'
+  // 'all' | 'completed' | 'partneredLabsPatients' | 'catalog'
   const [cardTab, setCardTab] = useState('all');
-  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'availableTests'
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'availableTests' | 'partneredLabsPatients'
 
   const [labTests, setLabTests] = useState([]);
   const [hospitals, setHospitals] = useState([]);
+  const [partneredLabs, setPartneredLabs] = useState([]);
   const [catalog, setCatalog] = useState(DEFAULT_CATALOG);
   const [loading, setLoading] = useState(true);
 
@@ -219,6 +228,13 @@ const LabTests = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [catalogCategory, setCatalogCategory] = useState('All');
   const [catalogSearch, setCatalogSearch] = useState('');
+
+  // Filters for Partnered Labs & Patients View
+  const [partneredHospSearch, setPartneredHospSearch] = useState('');
+  const [partneredHospFacilityFilter, setPartneredHospFacilityFilter] = useState('All'); // 'All' | 'with-bookings' | 'no-bookings'
+
+  // Selected hospital modal for viewing its patient lab tests
+  const [viewingHospitalTests, setViewingHospitalTests] = useState(null);
 
   // Selected report modal
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -267,10 +283,26 @@ const LabTests = () => {
     }
   };
 
+  // Fetch Partnered Labs
+  const fetchPartneredLabs = async () => {
+    try {
+      const res = await fetch('/api/partnered-labs', {
+        headers: { Authorization: `Bearer ${admin?.token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPartneredLabs(Array.isArray(data.labs) ? data.labs : []);
+      }
+    } catch (e) {
+      console.error('Fetch partnered labs error:', e);
+    }
+  };
+
   useEffect(() => {
     if (admin?.token) {
       fetchHospitals();
       fetchLabTests();
+      fetchPartneredLabs();
     }
   }, [admin]);
 
@@ -361,6 +393,83 @@ const LabTests = () => {
       return true;
     });
   }, [catalog, catalogCategory, catalogSearch]);
+
+  // Partnered hospitals data with assigned external labs and applied patient test counts
+  const partneredHospitalData = useMemo(() => {
+    if (!Array.isArray(hospitals)) return [];
+
+    return hospitals
+      .map((hosp) => {
+        // 1. Assigned Partnered Labs for this hospital
+        const assignedLabs = (partneredLabs || []).filter((lab) => {
+          if (!Array.isArray(lab.hospitals)) return false;
+          return lab.hospitals.some((item) => {
+            const id = item?._id || item;
+            return (
+              id?.toString() === hosp._id?.toString() ||
+              (item?.name && item.name.toLowerCase() === (hosp.name || '').toLowerCase())
+            );
+          });
+        });
+
+        // 2. Lab Tests booked/applied from this hospital
+        const hospitalTests = (labTests || []).filter((test) => {
+          const tHosp = (test.hospitalName || '').trim().toLowerCase();
+          const hName = (hosp.name || '').trim().toLowerCase();
+          return tHosp === hName;
+        });
+
+        const uniquePatients = new Set(
+          hospitalTests
+            .map((t) => (t.patientPhone || t.patientName || '').trim().toLowerCase())
+            .filter(Boolean)
+        );
+
+        const completedCount = hospitalTests.filter((t) => t.status === 'Report Completed').length;
+        const pendingCount = hospitalTests.filter((t) => t.status !== 'Report Completed').length;
+
+        return {
+          hospital: hosp,
+          assignedLabs,
+          hasPartneredLabs: assignedLabs.length > 0,
+          tests: hospitalTests,
+          totalTestsApplied: hospitalTests.length,
+          uniquePatientsCount: uniquePatients.size,
+          completedCount,
+          pendingCount,
+        };
+      })
+      .filter((item) => item.hasPartneredLabs);
+  }, [hospitals, partneredLabs, labTests]);
+
+  const totalPartneredHospitalsCount = partneredHospitalData.length;
+  const totalPatientsAppliedPartnered = useMemo(() => {
+    return partneredHospitalData.reduce((acc, item) => acc + item.totalTestsApplied, 0);
+  }, [partneredHospitalData]);
+
+  // Displayed partnered hospitals filtered by search and facility filter
+  const displayedPartneredHospitals = useMemo(() => {
+    return partneredHospitalData.filter((item) => {
+      if (partneredHospFacilityFilter === 'with-bookings') {
+        if (item.totalTestsApplied === 0) return false;
+      } else if (partneredHospFacilityFilter === 'no-bookings') {
+        if (item.totalTestsApplied > 0) return false;
+      }
+
+      if (partneredHospSearch.trim()) {
+        const q = partneredHospSearch.toLowerCase().trim();
+        const matchName = (item.hospital.name || '').toLowerCase().includes(q);
+        const matchCode = (item.hospital.code || '').toLowerCase().includes(q);
+        const matchCity = (item.hospital.city || '').toLowerCase().includes(q);
+        const matchLab = item.assignedLabs.some(
+          (l) => (l.name || '').toLowerCase().includes(q) || (l.labCode || '').toLowerCase().includes(q)
+        );
+        return matchName || matchCode || matchCity || matchLab;
+      }
+
+      return true;
+    });
+  }, [partneredHospitalData, partneredHospFacilityFilter, partneredHospSearch]);
 
   // Update Status
   const handleUpdateStatus = async (testId, newStatus) => {
@@ -535,39 +644,40 @@ const LabTests = () => {
           </div>
         </div>
 
-        {/* Option 3: In-Analysis & Samples */}
+        {/* Option 3: Partnered Labs & Patients */}
         <div
           className="super-metric-card"
           onClick={() => {
-            setCardTab('in_analysis');
-            setActiveTab('bookings');
-            setStatusFilter('In-Analysis & Samples');
+            setCardTab('partneredLabsPatients');
+            setActiveTab('partneredLabsPatients');
           }}
           style={{
             cursor: 'pointer',
             transition: 'all 0.2s ease',
-            border: cardTab === 'in_analysis' ? '2px solid #f59e0b' : '1px solid #eaeff5',
-            background: cardTab === 'in_analysis' ? '#fffbeb' : '#ffffff',
-            boxShadow: cardTab === 'in_analysis' ? '0 4px 16px rgba(245, 158, 11, 0.16)' : 'none',
-            transform: cardTab === 'in_analysis' ? 'translateY(-2px)' : 'none',
+            border: cardTab === 'partneredLabsPatients' ? '2px solid #0284c7' : '1px solid #eaeff5',
+            background: cardTab === 'partneredLabsPatients' ? '#f0f9ff' : '#ffffff',
+            boxShadow: cardTab === 'partneredLabsPatients' ? '0 4px 16px rgba(2, 132, 199, 0.16)' : 'none',
+            transform: cardTab === 'partneredLabsPatients' ? 'translateY(-2px)' : 'none',
           }}
-          title="Click to filter tests in-analysis & sample collection"
+          title="Click to view hospitals with partnered labs and patients applied for tests"
         >
           <div className="metric-info-left">
-            <span className="super-metric-label">In-Analysis & Samples</span>
-            <span className="super-metric-value">{stats.inProgressTotal}</span>
+            <span className="super-metric-label">Partnered Labs & Patients</span>
+            <span className="super-metric-value">{totalPartneredHospitalsCount}</span>
             <span
               className="super-metric-trend positive"
               style={{
-                color: cardTab === 'in_analysis' ? '#d97706' : '#64748b',
-                fontWeight: cardTab === 'in_analysis' ? 700 : 500,
+                color: cardTab === 'partneredLabsPatients' ? '#0284c7' : '#64748b',
+                fontWeight: cardTab === 'partneredLabsPatients' ? 700 : 500,
               }}
             >
-              {cardTab === 'in_analysis' ? '● Active Filter: Processing' : 'Click to view processing'}
+              {cardTab === 'partneredLabsPatients'
+                ? '● Active: Partnered Labs'
+                : `${totalPatientsAppliedPartnered} Patient Tests Applied`}
             </span>
           </div>
-          <div className="super-metric-icon-wrap" style={{ background: '#f59e0b' }}>
-            <Activity size={20} />
+          <div className="super-metric-icon-wrap" style={{ background: '#0284c7' }}>
+            <Microscope size={20} />
           </div>
         </div>
 
@@ -608,7 +718,7 @@ const LabTests = () => {
       </div>
 
       {/* 3. Main Panel: Controlled by the 4 Options above */}
-      {activeTab === 'bookings' ? (
+      {activeTab === 'bookings' && (
         <div className="super-panel-card">
           <div className="panel-card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
             <div>
@@ -900,8 +1010,10 @@ const LabTests = () => {
             )}
           </div>
         </div>
-      ) : (
-        /* Test Catalog Table (When Option 4 "Catalog Profiles" is clicked) */
+      )}
+
+      {/* Test Catalog Table (When Option 4 "Catalog Profiles" is clicked) */}
+      {activeTab === 'availableTests' && (
         <div className="super-panel-card">
           <div className="panel-card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
             <div>
@@ -1018,6 +1130,304 @@ const LabTests = () => {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Partnered Labs & Patients Panel */}
+      {activeTab === 'partneredLabsPatients' && (
+        <div className="super-panel-card">
+          <div className="panel-card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h3>
+                Hospitals with Partnered Labs & Patient Tests ({displayedPartneredHospitals.length})
+              </h3>
+              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Hospitals linked with external diagnostic laboratories and total patient tests requested
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {/* Search Hospital or Lab */}
+              <div className="super-search-bar" style={{ minWidth: '240px' }}>
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="Search hospital, code, city, lab..."
+                  value={partneredHospSearch}
+                  onChange={(e) => setPartneredHospSearch(e.target.value)}
+                />
+                {partneredHospSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setPartneredHospSearch('')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Facility Filter */}
+              <select
+                className="super-select-dropdown"
+                value={partneredHospFacilityFilter}
+                onChange={(e) => setPartneredHospFacilityFilter(e.target.value)}
+              >
+                <option value="All">All Partnered Hospitals ({partneredHospitalData.length})</option>
+                <option value="with-bookings">With Patient Test Applications</option>
+                <option value="no-bookings">Zero Applications Yet</option>
+              </select>
+
+              {/* Quick Navigation to Partnered Labs Page */}
+              <button
+                type="button"
+                className="super-btn-primary"
+                onClick={() => navigate('/admin/partnered-labs')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.45rem 0.85rem',
+                  fontSize: '0.825rem',
+                }}
+              >
+                <span>Manage Lab Access</span>
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Summary Cards Inside Panel */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+              padding: '1rem 1.5rem',
+              background: '#f8fafc',
+              borderBottom: '1px solid #f1f5f9',
+            }}
+          >
+            <div style={{ background: '#ffffff', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Partnered Hospitals</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', marginTop: '0.2rem' }}>{totalPartneredHospitalsCount}</div>
+            </div>
+            <div style={{ background: '#ffffff', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Patients Applied</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0284c7', marginTop: '0.2rem' }}>{totalPatientsAppliedPartnered}</div>
+            </div>
+            <div style={{ background: '#ffffff', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Active Partner Labs</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#6366f1', marginTop: '0.2rem' }}>
+                {partneredLabs.filter((l) => l.status === 'Active').length}
+              </div>
+            </div>
+            <div style={{ background: '#ffffff', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Reports Completed</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#10b981', marginTop: '0.2rem' }}>
+                {partneredHospitalData.reduce((acc, h) => acc + h.completedCount, 0)}
+              </div>
+            </div>
+          </div>
+
+          {/* Table of Hospitals with Partnered Labs & Patients */}
+          <div className="super-table-responsive">
+            <table className="super-table">
+              <thead>
+                <tr>
+                  <th>Hospital Facility</th>
+                  <th>Location</th>
+                  <th>Assigned Partnered Laboratories</th>
+                  <th style={{ textAlign: 'center' }}>Patients Applied for Lab Tests</th>
+                  <th>Report Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedPartneredHospitals.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '3.5rem 1rem', color: '#64748b' }}>
+                      <Building2 size={36} style={{ color: '#cbd5e1', marginBottom: '0.75rem', display: 'inline-block' }} />
+                      <div style={{ fontWeight: 600, color: '#334155' }}>No Partnered Hospitals Found</div>
+                      <div style={{ fontSize: '0.825rem', marginTop: '0.25rem' }}>
+                        {partneredHospSearch || partneredHospFacilityFilter !== 'All'
+                          ? 'Try adjusting your search query or filter.'
+                          : 'Assign external partnered laboratories to hospitals in the Partnered Labs section.'}
+                      </div>
+                      <button
+                        type="button"
+                        className="super-btn-primary"
+                        onClick={() => navigate('/admin/partnered-labs')}
+                        style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                      >
+                        <Microscope size={14} />
+                        <span>Go to Partnered Labs Directory</span>
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  displayedPartneredHospitals.map(({ hospital, assignedLabs, tests, totalTestsApplied, uniquePatientsCount, completedCount, pendingCount }) => (
+                    <tr key={hospital._id || hospital.code}>
+                      {/* Hospital Facility */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                          <div
+                            style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '8px',
+                              background: '#f0f9ff',
+                              color: '#0284c7',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Building2 size={18} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#0f172a' }}>{hospital.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              Code: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{hospital.code}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Location */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#475569', fontSize: '0.85rem' }}>
+                          <MapPin size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                          <span>{hospital.city ? `${hospital.city}, ${hospital.state || 'India'}` : hospital.address || 'Network'}</span>
+                        </div>
+                      </td>
+
+                      {/* Assigned Partnered Laboratories */}
+                      <td>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', maxWidth: '320px' }}>
+                          {assignedLabs.map((lab) => (
+                            <span
+                              key={lab._id || lab.labCode}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '6px',
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '0.75rem',
+                                color: '#1e293b',
+                                fontWeight: 500,
+                              }}
+                              title={`${lab.name} (${lab.labCode}) - Contact: ${lab.contactPhone || 'N/A'}`}
+                            >
+                              <Microscope size={12} style={{ color: '#0284c7' }} />
+                              <span>{lab.name}</span>
+                              <span style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                                [{lab.labCode}]
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+
+                      {/* Patients Applied for Lab Tests */}
+                      <td style={{ textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0.35rem 0.85rem',
+                            borderRadius: '8px',
+                            background: totalTestsApplied > 0 ? '#eff6ff' : '#f8fafc',
+                            border: totalTestsApplied > 0 ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '1.05rem',
+                              fontWeight: 700,
+                              color: totalTestsApplied > 0 ? '#1d4ed8' : '#64748b',
+                            }}
+                          >
+                            {totalTestsApplied}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                            {totalTestsApplied === 1 ? 'Test Booked' : 'Tests Booked'}
+                            {uniquePatientsCount > 0 && ` (${uniquePatientsCount} Patients)`}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Report Status */}
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: '#059669', fontWeight: 600 }}>
+                            ● {completedCount} Reports Ready
+                          </span>
+                          <span style={{ color: pendingCount > 0 ? '#d97706' : '#94a3b8', fontWeight: 500 }}>
+                            ○ {pendingCount} In-Progress / Pending
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          {totalTestsApplied > 0 ? (
+                            <button
+                              type="button"
+                              className="super-btn-primary"
+                              onClick={() =>
+                                setViewingHospitalTests({
+                                  hospital,
+                                  assignedLabs,
+                                  tests,
+                                  totalTestsApplied,
+                                  uniquePatientsCount,
+                                })
+                              }
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                padding: '0.35rem 0.75rem',
+                                fontSize: '0.775rem',
+                              }}
+                            >
+                              <Users size={13} />
+                              <span>View Patient Tests ({totalTestsApplied})</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="super-btn-outline"
+                              onClick={() => navigate('/admin/partnered-labs')}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                padding: '0.35rem 0.65rem',
+                                fontSize: '0.75rem',
+                                color: '#64748b',
+                              }}
+                            >
+                              <Microscope size={13} />
+                              <span>Manage Labs</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1265,6 +1675,253 @@ const LabTests = () => {
                 type="button"
                 className="super-btn-primary"
                 onClick={() => setSelectedBooking(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: View Hospital Patient Lab Tests */}
+      {viewingHospitalTests && (
+        <div className="super-modal-backdrop" onClick={() => setViewingHospitalTests(null)}>
+          <div
+            className="super-modal-card"
+            style={{ maxWidth: '960px', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="super-modal-header" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: '#e0f2fe',
+                    color: '#0284c7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
+                    {viewingHospitalTests.hospital.name} — Patient Lab Tests
+                  </h3>
+                  <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    Code: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{viewingHospitalTests.hospital.code}</span>
+                    {' • '}
+                    {viewingHospitalTests.hospital.city || 'Network'}
+                    {' • '}
+                    Total {viewingHospitalTests.totalTestsApplied} test application(s) across {viewingHospitalTests.uniquePatientsCount} patient(s)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="super-modal-close"
+                onClick={() => setViewingHospitalTests(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Assigned Partnered Labs Header Strip */}
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem 1rem',
+                background: '#f8fafc',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                  Assigned Partner Labs:
+                </span>
+                {viewingHospitalTests.assignedLabs.map((lab) => (
+                  <span
+                    key={lab._id || lab.labCode}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: '6px',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.75rem',
+                      color: '#0f172a',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Microscope size={12} style={{ color: '#0284c7' }} />
+                    {lab.name}
+                    <span style={{ color: '#64748b', fontWeight: 400 }}>[{lab.labCode}]</span>
+                  </span>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="super-btn-outline"
+                onClick={() => {
+                  setViewingHospitalTests(null);
+                  navigate('/admin/partnered-labs');
+                }}
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem' }}
+              >
+                Manage Access
+              </button>
+            </div>
+
+            {/* Patient Tests List Table */}
+            <div className="super-table-responsive" style={{ marginTop: '1rem' }}>
+              <table className="super-table">
+                <thead>
+                  <tr>
+                    <th>Patient Details</th>
+                    <th>Booking Token</th>
+                    <th>Test Name & Specimen</th>
+                    <th>Scheduled Date</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Diagnostic Report</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewingHospitalTests.tests.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                        No patient tests have been applied for this hospital yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    viewingHospitalTests.tests.map((test) => (
+                      <tr key={test._id || test.testBookingId}>
+                        <td>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#0f172a' }}>{test.patientName}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {test.patientAge ? `${test.patientAge} Yrs, ` : ''}{test.patientGender || ''}
+                              {test.patientPhone ? ` • ${test.patientPhone}` : ''}
+                            </div>
+                            {test.medyCardId && (
+                              <div style={{ fontSize: '0.7rem', color: '#0284c7', fontFamily: 'monospace' }}>
+                                Card: {test.medyCardId}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        <td>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155', fontSize: '0.8rem' }}>
+                            {test.testBookingId}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>{test.testName}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {test.category} • Sample: {test.specimenType || 'Blood'}
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          <div style={{ fontSize: '0.8rem', color: '#334155' }}>
+                            {test.scheduledDate || (test.createdAt ? new Date(test.createdAt).toLocaleDateString() : 'N/A')}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                            {test.timeSlot || 'Standard Hours'}
+                          </div>
+                        </td>
+
+                        <td>
+                          <span
+                            className="super-status-badge"
+                            style={{
+                              background:
+                                test.status === 'Report Completed'
+                                  ? '#ecfdf5'
+                                  : test.status === 'In-Analysis'
+                                  ? '#eff6ff'
+                                  : test.status === 'Sample Collected'
+                                  ? '#fef3c7'
+                                  : '#f1f5f9',
+                              color:
+                                test.status === 'Report Completed'
+                                  ? '#065f46'
+                                  : test.status === 'In-Analysis'
+                                  ? '#1d4ed8'
+                                  : test.status === 'Sample Collected'
+                                  ? '#92400e'
+                                  : '#475569',
+                              border:
+                                test.status === 'Report Completed'
+                                  ? '1px solid #a7f3d0'
+                                  : test.status === 'In-Analysis'
+                                  ? '1px solid #bfdbfe'
+                                  : test.status === 'Sample Collected'
+                                  ? '1px solid #fde68a'
+                                  : '1px solid #e2e8f0',
+                            }}
+                          >
+                            {test.status}
+                          </span>
+                        </td>
+
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="super-btn-outline"
+                            onClick={() => {
+                              setSelectedBooking(test);
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.75rem',
+                            }}
+                          >
+                            <Eye size={13} />
+                            <span>View Report</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                marginTop: '1.25rem',
+                paddingTop: '0.85rem',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                type="button"
+                className="super-btn-primary"
+                onClick={() => setViewingHospitalTests(null)}
               >
                 Close
               </button>

@@ -6,10 +6,12 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import HospitalManagement from './pages/HospitalManagement';
+import HospitalDetails from './pages/HospitalDetails';
 import HospitalAdminManagement from './pages/HospitalAdminManagement';
 import Patients from './pages/Patients';
 import MediCard from './pages/MediCard';
 import LabTests from './pages/LabTests';
+import PartneredLabs from './pages/PartneredLabs';
 import DoctorAppointments from './pages/DoctorAppointments';
 import ReportsAnalytics from './pages/ReportsAnalytics';
 import AuditLogs from './pages/AuditLogs';
@@ -84,6 +86,8 @@ function App() {
 
             {/* 2. Hospital Management */}
             <Route path="/hospitals" element={<HospitalManagement />} />
+            <Route path="/hospitals/:id" element={<HospitalDetails />} />
+            <Route path="/hospital-details/:id" element={<Navigate to="/hospitals/:id" replace />} />
             <Route path="/hospital-management" element={<Navigate to="/hospitals" replace />} />
             <Route path="/hospital-admins" element={<HospitalAdminManagement />} />
             <Route path="/hospital-admin-management" element={<Navigate to="/hospital-admins" replace />} />
@@ -101,6 +105,7 @@ function App() {
             <Route path="/lab-tests" element={<LabTests />} />
             <Route path="/lab-management" element={<Navigate to="/lab-tests" replace />} />
             <Route path="/laboratory" element={<Navigate to="/lab-tests" replace />} />
+            <Route path="/partnered-labs" element={<PartneredLabs />} />
 
             {/* 6. Appointments */}
             <Route path="/doctor-appointments" element={<DoctorAppointments />} />

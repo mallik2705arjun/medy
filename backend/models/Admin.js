@@ -43,7 +43,7 @@ const adminSchema = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      default: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=160&auto=format&fit=crop&q=80',
+      default: '',
     },
     hospitalId: {
       type: mongoose.Schema.Types.ObjectId,

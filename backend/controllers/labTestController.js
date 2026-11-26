@@ -3,6 +3,7 @@ const LabTest = require('../models/LabTest');
 const Patient = require('../models/Patient');
 const Hospital = require('../models/Hospital');
 const LabCatalogTest = require('../models/LabCatalogTest');
+const AuditLog = require('../models/AuditLog');
 
 // Standard Lab Test Catalog
 const LAB_CATALOG = [
@@ -501,6 +502,20 @@ const createLabTest = async (req, res) => {
 
     const savedLabTest = await labTest.save();
 
+    try {
+      await AuditLog.create({
+        action: 'LAB_TEST_ORDERED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${testName.trim()} (${patientName.trim()})`,
+        details: `Diagnostic test booking #${labTest.testBookingId} (${resolvedCategory}) scheduled at ${finalHospitalName} on ${new Date(bookingDate).toLocaleDateString('en-GB')}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Success',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     res.status(201).json({
       message: 'Lab test booked successfully',
       labTest: savedLabTest,
@@ -548,6 +563,20 @@ const updateLabTestStatus = async (req, res) => {
 
     const updated = await labTest.save();
 
+    try {
+      await AuditLog.create({
+        action: status === 'Report Completed' ? 'LAB_REPORT_COMPLETED' : 'LAB_TEST_STATUS_CHANGED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${labTest.testBookingId} (${labTest.testName} • ${labTest.patientName})`,
+        details: `Diagnostic test status updated to "${status}" at ${labTest.hospitalName}${resultSummary ? ` • Result: ${resultSummary}` : ''}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: status === 'Cancelled' ? 'Warning' : 'Success',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     res.json({
       message: 'Lab test status updated successfully',
       labTest: updated,
@@ -573,7 +602,23 @@ const deleteLabTest = async (req, res) => {
       return res.status(404).json({ message: 'Lab test booking not found' });
     }
 
+    const { testBookingId, testName, patientName, hospitalName } = labTest;
     await LabTest.findByIdAndDelete(id);
+
+    try {
+      await AuditLog.create({
+        action: 'LAB_TEST_DELETED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${testBookingId} (${testName} • ${patientName})`,
+        details: `Deleted diagnostic lab test booking record from ${hospitalName}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Warning',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     res.json({ message: 'Lab test booking deleted successfully' });
   } catch (error) {
     console.error('Error in deleteLabTest:', error);

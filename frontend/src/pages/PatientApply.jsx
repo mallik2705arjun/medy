@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import MedyCardPreview from '../components/MedyCardPreview';
 import {
   CreditCard,
   Building2,
@@ -763,7 +764,7 @@ const PatientApply = () => {
                 {statusResult.patient.hasMedyCard && statusResult.patient.cardId ? (
                   /* Issued Card Result */
                   <div className="issued-card-result">
-                    <div className="card-success-banner">
+                    <div className="card-success-banner" style={{ marginBottom: '1.25rem' }}>
                       <CheckCircle2 size={24} />
                       <div>
                         <strong>Your Medy Card has been issued and approved!</strong>
@@ -771,16 +772,20 @@ const PatientApply = () => {
                       </div>
                     </div>
 
-                    <div className="status-card-id-block">
-                      <span className="card-id-text">{statusResult.patient.cardId}</span>
-                      <button
-                        className="copy-card-btn"
-                        onClick={() => copyToClipboard(statusResult.patient.cardId)}
-                        title="Copy Card ID"
-                      >
-                        {copiedCardId ? <Check size={16} /> : <Copy size={16} />}
-                        <span>{copiedCardId ? 'Copied!' : 'Copy ID'}</span>
-                      </button>
+                    {/* Proper Shape Physical Medy Card */}
+                    <div style={{ marginBottom: '1.25rem' }}>
+                      <MedyCardPreview
+                        card={{
+                          cardId: statusResult.patient.cardId,
+                          patientName: statusResult.patient.name,
+                          hospitalName: statusResult.cardDetails?.hospitalName || statusResult.patient.hospitalName,
+                          insurancePlan: statusResult.cardDetails?.insurancePlan || 'Standard',
+                          coverageAmount: statusResult.cardDetails?.coverageAmount || 500000,
+                          validUntil: statusResult.cardDetails?.validUntil,
+                          status: 'Active',
+                        }}
+                        onCopy={(id) => copyToClipboard(id)}
+                      />
                     </div>
 
                     {statusResult.cardDetails && (

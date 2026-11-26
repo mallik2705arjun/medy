@@ -15,6 +15,7 @@ const labTestRoutes = require('./routes/labTestRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const hospitalAdminRoutes = require('./routes/hospitalAdminRoutes');
+const partneredLabRoutes = require('./routes/partneredLabRoutes');
 
 dotenv.config();
 
@@ -132,6 +133,7 @@ app.use('/api/lab-tests', labTestRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/hospital-admins', hospitalAdminRoutes);
+app.use('/api/partnered-labs', partneredLabRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -153,9 +155,15 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://127.0.0.1:${PORT}`);
+// Listen on all network interfaces (dual-stack IPv4 and IPv6) so both 127.0.0.1 and localhost connect cleanly
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT} (http://127.0.0.1:${PORT} & http://localhost:${PORT})`);
 });
+
+// Configure keep-alive timeout longer than frontend reverse proxies (e.g. Vite dev server proxy)
+// This eliminates intermittent "socket hang up" and ECONNRESET proxy errors
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
@@ -163,4 +171,20 @@ server.on('error', (err) => {
   } else {
     console.error('Server error:', err);
   }
+});
+
+// Gracefully handle client connection resets and aborts without terminating HTTP server
+server.on('clientError', (err, socket) => {
+  if (err.code === 'ECONNRESET' || !socket.writable) {
+    return;
+  }
+  socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+});
+
+// Prevent unhandled promise rejections or exceptions from abruptly crashing the server process
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
 });

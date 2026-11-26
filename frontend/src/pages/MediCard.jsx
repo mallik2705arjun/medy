@@ -19,6 +19,7 @@ import {
   Award,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import MedyCardPreview from '../components/MedyCardPreview';
 
 const PRESET_COLORS = [
   {
@@ -774,99 +775,11 @@ const MediCard = () => {
             </div>
 
             <div className="super-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* The Live Digital Medi Card Graphic */}
-              <div
-                style={{
-                  width: '100%',
-                  height: '210px',
-                  background: getHospitalColorTheme(viewingCard.hospitalName).gradient,
-                  borderRadius: '16px',
-                  padding: '1.25rem',
-                  color: '#ffffff',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: '0 16px 32px -8px rgba(37, 85, 246, 0.35)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Brand & Hospital */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 800 }}>
-                    <span style={{ color: '#93c5fd', fontSize: '1.2rem' }}>✚</span>
-                    <span style={{ fontSize: '1.1rem', letterSpacing: '0.05em' }}>MEDY</span>
-                  </div>
-                  <div
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      backdropFilter: 'blur(4px)',
-                      padding: '0.2rem 0.65rem',
-                      borderRadius: '999px',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {viewingCard.hospitalName}
-                  </div>
-                </div>
-
-                {/* EMV Chip & Tier */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div
-                    style={{
-                      width: '36px',
-                      height: '26px',
-                      borderRadius: '5px',
-                      background: 'linear-gradient(135deg, #fcd34d 0%, #f59e0b 100%)',
-                      border: '1px solid #d97706',
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      background: 'rgba(0, 0, 0, 0.25)',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: '4px',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    {viewingCard.insurancePlan?.toUpperCase() || 'STANDARD'} PLAN
-                  </span>
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      color: viewingCard.status === 'Active' ? '#a7f3d0' : '#fecaca',
-                    }}
-                  >
-                    ● {viewingCard.status?.toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Card ID */}
-                <div style={{ fontFamily: 'monospace', fontSize: '1.2rem', fontWeight: 700, letterSpacing: '0.12em' }}>
-                  {viewingCard.cardId}
-                </div>
-
-                {/* Footer Details */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.72rem', opacity: 0.9 }}>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.75 }}>Cardholder</div>
-                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{viewingCard.patientName}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.75 }}>Coverage Limit</div>
-                    <div style={{ fontWeight: 700 }}>₹{Number(viewingCard.coverageAmount || 500000).toLocaleString('en-IN')}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.75 }}>Valid Thru</div>
-                    <div style={{ fontWeight: 700 }}>{formatDate(viewingCard.validUntil)}</div>
-                  </div>
-                </div>
-              </div>
+              {/* The Live Digital Medi Card Graphic in Proper ID-1 Shape */}
+              <MedyCardPreview
+                card={viewingCard}
+                onCopy={(id) => handleCopyCardId(id)}
+              />
 
               {/* Information Grid */}
               <div

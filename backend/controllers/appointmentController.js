@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Appointment = require('../models/Appointment');
 const Patient = require('../models/Patient');
 const Hospital = require('../models/Hospital');
+const AuditLog = require('../models/AuditLog');
 
 // Helper to generate appointment ID
 const generateAppointmentId = async () => {
@@ -196,6 +197,20 @@ const createAppointment = async (req, res) => {
       notes: notes ? notes.trim() : '',
     });
 
+    try {
+      await AuditLog.create({
+        action: 'APPOINTMENT_SCHEDULED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${patientName.trim()} • Dr. ${doctorName.trim()} (${department.trim()})`,
+        details: `Confirmed appointment #${appointmentId} (Token: ${tokenNumber}) at ${finalHospitalName} on ${new Date(appointmentDate).toLocaleDateString('en-GB')} at ${timeSlot.trim()}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Success',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     res.status(201).json({
       message: `Doctor appointment booked successfully! Token: ${tokenNumber} (ID: ${appointmentId})`,
       appointment,
@@ -225,6 +240,20 @@ const updateAppointmentStatus = async (req, res) => {
     if (notes !== undefined) appointment.notes = notes;
     await appointment.save();
 
+    try {
+      await AuditLog.create({
+        action: status === 'Cancelled' ? 'APPOINTMENT_CANCELLED' : status === 'Completed' ? 'APPOINTMENT_COMPLETED' : 'APPOINTMENT_STATUS_CHANGED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${appointment.appointmentId} (${appointment.patientName} • Dr. ${appointment.doctorName})`,
+        details: `Appointment status updated to ${status} at ${appointment.hospitalName}${notes ? ` • Note: ${notes}` : ''}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: status === 'Cancelled' ? 'Warning' : 'Success',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     res.json({
       message: `Appointment ${appointment.appointmentId} marked as ${status}`,
       appointment,
@@ -245,8 +274,24 @@ const deleteAppointment = async (req, res) => {
       return res.status(404).json({ message: 'Appointment not found' });
     }
 
+    const { appointmentId, patientName, doctorName, hospitalName } = appointment;
     await appointment.deleteOne();
-    res.json({ message: `Appointment ${appointment.appointmentId} removed successfully` });
+
+    try {
+      await AuditLog.create({
+        action: 'APPOINTMENT_DELETED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${appointmentId} (${patientName} • Dr. ${doctorName})`,
+        details: `Appointment removed from system records at ${hospitalName}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Warning',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
+    res.json({ message: `Appointment ${appointmentId} removed successfully` });
   } catch (error) {
     console.error('Delete Appointment Error:', error);
     res.status(500).json({ message: error.message || 'Failed to remove appointment' });

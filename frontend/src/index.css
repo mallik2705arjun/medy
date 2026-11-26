@@ -10,8 +10,8 @@
   
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
-  --bg-sidebar: #0284c7;
-  --bg-sidebar-grad: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  --bg-sidebar: #0a1128;
+  --bg-sidebar-grad: linear-gradient(180deg, #0a1128 0%, #0f1d40 60%, #0a1128 100%);
   
   --text-primary: #0f172a;
   --text-secondary: #334155;
@@ -1729,20 +1729,21 @@ a {
    ========================================= */
 .real-medy-card {
   width: 100%;
-  max-width: 400px;
-  height: 240px;
-  border-radius: 14px;
+  max-width: 430px;
+  aspect-ratio: 85.6 / 53.98;
+  min-height: 260px;
+  border-radius: 16px;
   margin: 0 auto 1.5rem auto;
-  padding: 1.25rem 1.5rem;
+  padding: 1.35rem 1.6rem;
   color: #ffffff;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.4), 0 4px 8px -2px rgba(15, 23, 42, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 20px 40px -12px rgba(15, 23, 42, 0.45), 0 8px 18px -4px rgba(15, 23, 42, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
 }
 
 .real-medy-card:hover {
@@ -4401,7 +4402,9 @@ a {
 .super-sidebar {
   width: 240px;
   min-width: 240px;
-  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  background: linear-gradient(180deg, #0a1128 0%, #0f1d40 60%, #0a1128 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 2px 0 16px rgba(10, 17, 40, 0.25);
   height: 100vh;
   position: sticky;
   top: 0;
@@ -4456,7 +4459,7 @@ a {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.15);
   border: none;
   color: #ffffff;
   cursor: pointer;
@@ -4468,7 +4471,7 @@ a {
 }
 
 .sidebar-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .super-sidebar-menu {
@@ -4496,12 +4499,17 @@ a {
   justify-content: space-between;
   padding: 0.65rem 0.85rem;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #94a3b8;
   font-size: 0.88rem;
   font-weight: 500;
   text-decoration: none;
   transition: all 0.18s ease;
   user-select: none;
+}
+
+.super-nav-link .super-nav-icon {
+  color: #94a3b8;
+  transition: color 0.18s ease;
 }
 
 .super-sidebar.collapsed .super-nav-link {
@@ -4510,23 +4518,27 @@ a {
 }
 
 .super-nav-link:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
+.super-nav-link:hover .super-nav-icon {
+  color: #38bdf8;
+}
+
 .super-nav-link.active {
-  background: #ffffff;
-  color: #0284c7;
-  font-weight: 700;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
 }
 
 .super-nav-link.active .super-nav-icon {
-  color: #0284c7;
+  color: #ffffff;
 }
 
 .super-nav-link.active .super-nav-arrow {
-  color: #0284c7;
+  color: #ffffff;
 }
 
 .nav-link-left {
@@ -4621,14 +4633,14 @@ a {
 
 .super-sidebar-footer {
   padding-top: 1.25rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
 .super-nav-link.footer-link {
-  color: rgba(255, 255, 255, 0.75);
+  color: #94a3b8;
 }
 
 .super-nav-link.footer-link.logout {
@@ -4640,8 +4652,12 @@ a {
 }
 
 .super-nav-link.footer-link:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.12);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.super-nav-link.footer-link:hover .super-nav-icon {
+  color: #f87171;
 }
 
 /* Super User Profile Meta */
@@ -4768,9 +4784,27 @@ a {
   flex: 1;
   min-width: 0;
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   box-sizing: border-box;
   background: #f8fafc;
+}
+
+.dashboard-top-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: linear-gradient(90deg, #0a1128 0%, #0f1d40 50%, #162a56 100%);
+  border-bottom: 2px solid #0284c7;
+  box-shadow: 0 4px 20px -2px rgba(10, 17, 40, 0.25);
+  margin: -1.25rem -1.75rem 1.25rem -1.75rem;
+  padding: 0.85rem 1.75rem;
+  width: calc(100% + 3.5rem);
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .super-dashboard {

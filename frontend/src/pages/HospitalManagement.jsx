@@ -19,6 +19,7 @@ import {
   Trash2,
   Eye,
   AlertTriangle,
+  FlaskConical,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -53,6 +54,8 @@ const HospitalManagement = () => {
     phone: '',
     email: '',
     address: '',
+    adminName: '',
+    adminEmail: '',
   });
 
   // Fetch hospitals and patients
@@ -108,10 +111,24 @@ const HospitalManagement = () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to register hospital');
 
-      setHospitalForm({ name: '', code: '', city: '', phone: '', email: '', address: '' });
+      setHospitalForm({
+        name: '',
+        code: '',
+        city: '',
+        phone: '',
+        email: '',
+        address: '',
+        adminName: '',
+        adminEmail: '',
+      });
       setIsRegisterOpen(false);
-      setSuccessMessage(`Hospital "${data.name}" registered successfully.`);
-      setTimeout(() => setSuccessMessage(''), 4000);
+      const emailNotice = data.emailNotification?.success
+        ? ` • Appointment email dispatched to ${data.assignedAdmin?.email}`
+        : data.assignedAdmin
+        ? ` • Administrator appointed (${data.assignedAdmin.email})`
+        : '';
+      setSuccessMessage(`Hospital "${data.name}" registered successfully!${emailNotice}`);
+      setTimeout(() => setSuccessMessage(''), 5500);
       fetchHospitalData();
     } catch (err) {
       setFormError(err.message || 'Error creating hospital');
@@ -256,7 +273,7 @@ const HospitalManagement = () => {
             }}
           >
             <Plus size={16} />
-            <span>Register Hospital</span>
+            <span>Create Hospital</span>
           </button>
         </div>
       </div>
@@ -388,30 +405,6 @@ const HospitalManagement = () => {
             <XCircle size={20} />
           </div>
         </div>
-
-        <div
-          className="super-metric-card"
-          onClick={() => {
-            setSelectedHospital(null);
-            setStatusFilter('All');
-          }}
-          style={{
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            border: '1px solid #eaeff5',
-            background: '#ffffff',
-          }}
-          title="Click to view all network patients"
-        >
-          <div className="metric-info-left">
-            <span className="super-metric-label">Network Patients Enrolled</span>
-            <span className="super-metric-value">{allPatients.length}</span>
-            <span className="super-metric-trend positive">Across All Facilities</span>
-          </div>
-          <div className="super-metric-icon-wrap" style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)', color: '#fff' }}>
-            <Users size={20} />
-          </div>
-        </div>
       </div>
 
       {/* Main Content Area: Hospitals List or Selected Hospital Detail */}
@@ -435,10 +428,21 @@ const HospitalManagement = () => {
               </div>
             </div>
 
-            <span className={`super-status-pill ${selectedHospital.status === 'Active' ? 'active' : 'inactive'}`}>
-              <span className="status-dot"></span>
-              {selectedHospital.status}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <button
+                type="button"
+                className="super-btn-primary"
+                onClick={() => navigate(`/hospitals/${selectedHospital._id}`)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.825rem' }}
+              >
+                <Eye size={14} />
+                <span>Open Full Hospital Page</span>
+              </button>
+              <span className={`super-status-pill ${selectedHospital.status === 'Active' ? 'active' : 'inactive'}`}>
+                <span className="status-dot"></span>
+                {selectedHospital.status}
+              </span>
+            </div>
           </div>
 
           <div style={{ padding: '0.5rem 0' }}>
@@ -490,26 +494,19 @@ const HospitalManagement = () => {
           <div className="panel-card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <h3>Partner Hospital Facilities ({filteredHospitals.length})</h3>
-              <select
-                className="super-select-dropdown"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="All">All Statuses</option>
-                <option value="Active">Active Only</option>
-                <option value="Inactive">Inactive / Deactivated Only</option>
-              </select>
             </div>
 
-            <div className="super-nav-search" style={{ width: '280px' }}>
-              <Search size={16} className="super-search-icon" />
-              <input
-                type="text"
-                className="super-search-input"
-                placeholder="Search hospital name, city, code..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div className="super-nav-search" style={{ width: '260px' }}>
+                <Search size={16} className="super-search-icon" />
+                <input
+                  type="text"
+                  className="super-search-input"
+                  placeholder="Search hospital name, city, code..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
@@ -537,15 +534,41 @@ const HospitalManagement = () => {
                   return (
                     <tr key={hosp._id}>
                       <td>
-                        <strong>{hosp.name}</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                          <span
+                            onClick={() => navigate(`/hospitals/${hosp._id}`)}
+                            style={{
+                              fontWeight: 700,
+                              color: '#0284c7',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              transition: 'color 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = '#0369a1')}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = '#0284c7')}
+                            title="Click to view full details and records for this hospital"
+                          >
+                            <Building2 size={15} style={{ flexShrink: 0 }} />
+                            <span>{hosp.name}</span>
+                          </span>
+                        </div>
                         {hosp.address && (
-                          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.15rem' }}>
                             {hosp.address}
                           </div>
                         )}
                       </td>
                       <td>
-                        <span className="card-id-badge">{hosp.code}</span>
+                        <span
+                          className="card-id-badge"
+                          onClick={() => navigate(`/hospitals/${hosp._id}`)}
+                          style={{ cursor: 'pointer' }}
+                          title="Click to view full hospital details"
+                        >
+                          {hosp.code}
+                        </span>
                       </td>
                       <td>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -563,7 +586,7 @@ const HospitalManagement = () => {
                         <button
                           className="super-btn-secondary"
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.78rem' }}
-                          onClick={() => setSelectedHospital(hosp)}
+                          onClick={() => navigate(`/hospitals/${hosp._id}?tab=patients`)}
                           title="Click to view all patients registered at this hospital"
                         >
                           <Users size={13} />
@@ -572,9 +595,8 @@ const HospitalManagement = () => {
                       </td>
                       <td>
                         <span
-                          className={`super-status-pill ${
-                            hosp.status === 'Active' ? 'active' : 'inactive'
-                          }`}
+                          className={`super-status-pill ${hosp.status === 'Active' ? 'active' : 'inactive'
+                            }`}
                         >
                           <span className="status-dot"></span>
                           {hosp.status || 'Active'}
@@ -582,12 +604,12 @@ const HospitalManagement = () => {
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div className="table-actions-cell" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                          {/* 1. READ / View Details */}
+                          {/* 1. READ / View Full Details Page */}
                           <button
                             type="button"
                             className="action-icon-btn edit"
-                            onClick={() => setViewingHospital(hosp)}
-                            title="View Facility Profile & Stats"
+                            onClick={() => navigate(`/hospitals/${hosp._id}`)}
+                            title="Open Full Hospital Details & Dossier"
                             style={{ color: '#0284c7', background: '#e0f2fe' }}
                           >
                             <Eye size={15} />
@@ -759,6 +781,52 @@ const HospitalManagement = () => {
                     onChange={(e) => setHospitalForm({ ...hospitalForm, address: e.target.value })}
                   />
                 </div>
+
+                {/* Hospital Administrator Appointment & Nodemailer Section */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '10px',
+                  padding: '1.1rem',
+                  marginTop: '0.75rem',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.35rem', color: '#0369a1', fontWeight: 600, fontSize: '0.85rem' }}>
+                    <Mail size={16} />
+                    <span>Appoint Hospital Administrator (Nodemailer Notification)</span>
+                  </div>
+                  <p style={{ margin: '0 0 0.85rem 0', fontSize: '0.78rem', color: '#0284c7', lineHeight: 1.45 }}>
+                    Enter the email of the hospital administrator. Upon registering this facility, Nodemailer will automatically dispatch an official appointment notice with login credentials to their inbox.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.85rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0f172a' }}>
+                        Admin Email (Recipient) *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="admin@hospital.com"
+                        value={hospitalForm.adminEmail}
+                        onChange={(e) => setHospitalForm({ ...hospitalForm, adminEmail: e.target.value })}
+                        style={{ background: '#ffffff' }}
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0f172a' }}>
+                        Admin Full Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Dr. Rajesh Sharma"
+                        value={hospitalForm.adminName}
+                        onChange={(e) => setHospitalForm({ ...hospitalForm, adminName: e.target.value })}
+                        style={{ background: '#ffffff' }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="super-modal-footer">
@@ -917,9 +985,8 @@ const HospitalManagement = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{viewingHospital.name}</h3>
                     <span
-                      className={`super-status-pill ${
-                        viewingHospital.status === 'Active' ? 'active' : 'inactive'
-                      }`}
+                      className={`super-status-pill ${viewingHospital.status === 'Active' ? 'active' : 'inactive'
+                        }`}
                       style={{ fontSize: '0.72rem' }}
                     >
                       <span className="status-dot"></span>
@@ -1010,19 +1077,19 @@ const HospitalManagement = () => {
             <div className="super-modal-footer">
               <button
                 type="button"
-                className="super-btn-secondary"
+                className="super-btn-primary"
                 onClick={() => {
                   const h = viewingHospital;
                   setViewingHospital(null);
-                  setSelectedHospital(h);
+                  navigate(`/hospitals/${h._id}`);
                 }}
               >
-                <Users size={14} />
-                <span>View Patients</span>
+                <Eye size={14} />
+                <span>Open Full Hospital Page</span>
               </button>
               <button
                 type="button"
-                className="super-btn-primary"
+                className="super-btn-secondary"
                 onClick={() => {
                   const h = viewingHospital;
                   setViewingHospital(null);

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { History, Search, ShieldCheck, Filter, AlertCircle, CheckCircle2, Building2, ShieldAlert, CreditCard, Lock } from 'lucide-react';
+import { History, ShieldCheck, Filter, AlertCircle, CheckCircle2, Building2, ShieldAlert, CreditCard, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AuditLogs = () => {
   const { admin } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('All');
 
   const fetchLogs = async () => {
@@ -27,8 +26,14 @@ const AuditLogs = () => {
   };
 
   useEffect(() => {
-    if (admin?.token) fetchLogs();
+    if (!admin?.token) return;
+    fetchLogs();
+    // Live background polling every 5 seconds to ensure immediate governance updates
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
   }, [admin]);
+
+  const distinctActions = Array.from(new Set(logs.map((l) => l.action).filter(Boolean))).sort();
 
   const hospitalOpsCount = logs.filter(
     (l) => (l.action || '').includes('HOSPITAL') || (l.action || '').includes('BED')
@@ -70,30 +75,36 @@ const AuditLogs = () => {
       matchAction = log.action === actionFilter;
     }
 
-    const q = search.toLowerCase();
-    const matchSearch =
-      (log.action || '').toLowerCase().includes(q) ||
-      (log.actor || '').toLowerCase().includes(q) ||
-      (log.target || '').toLowerCase().includes(q) ||
-      (log.details || '').toLowerCase().includes(q);
-    return matchAction && matchSearch;
+    return matchAction;
   });
 
   const getActionBadgeColor = (action = '') => {
-    if (action.includes('DEACTIVATE') || action.includes('FAILED') || action.includes('DELETE') || action.includes('HOLD')) {
+    const act = (action || '').toUpperCase();
+    if (
+      act.includes('DELETE') ||
+      act.includes('DEACTIVATE') ||
+      act.includes('CANCEL') ||
+      act.includes('REJECT') ||
+      act.includes('FAILED') ||
+      act.includes('HOLD') ||
+      act.includes('REVOKE')
+    ) {
       return { bg: '#fee2e2', color: '#b91c1c' };
     }
-    if (action.includes('HOSPITAL') || action.includes('BED')) {
+    if (act.includes('HOSPITAL_ADMIN') || act.includes('ADMIN') || act.includes('SECURITY') || act.includes('LOGIN')) {
+      return { bg: '#fffbeb', color: '#b45309' };
+    }
+    if (act.includes('HOSPITAL') || act.includes('BED')) {
       return { bg: '#e0f2fe', color: '#0284c7' };
     }
-    if (action.includes('MEDY_CARD') || action.includes('MEDICARD') || action.includes('CARD')) {
+    if (act.includes('MEDY_CARD') || act.includes('MEDICARD') || act.includes('CARD')) {
       return { bg: '#f5f3ff', color: '#6d28d9' };
     }
-    if (action.includes('PATIENT') || action.includes('LAB') || action.includes('APPOINTMENT')) {
+    if (act.includes('PATIENT')) {
       return { bg: '#f0fdfa', color: '#0f766e' };
     }
-    if (action.includes('LOGIN') || action.includes('SECURITY') || action.includes('ADMIN')) {
-      return { bg: '#fffbeb', color: '#b45309' };
+    if (act.includes('LAB') || act.includes('APPOINTMENT')) {
+      return { bg: '#ecfeff', color: '#0891b2' };
     }
     return { bg: '#f1f5f9', color: '#334155' };
   };
@@ -119,47 +130,22 @@ const AuditLogs = () => {
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
           >
-            <option value="All">All Audit Actions</option>
+            <option value="All">All Audit Actions ({logs.length})</option>
             <optgroup label="Event Categories">
-              <option value="HOSPITAL_EVENTS">🏥 Hospital Governance</option>
-              <option value="CARD_PATIENT_EVENTS">💳 Medy Cards & Patients</option>
-              <option value="CLINICAL_SECURITY_EVENTS">🛡️ Clinical & Security</option>
+              <option value="HOSPITAL_EVENTS">🏥 Hospital Governance ({hospitalOpsCount})</option>
+              <option value="CARD_PATIENT_EVENTS">💳 Medy Cards & Patients ({cardPatientCount})</option>
+              <option value="CLINICAL_SECURITY_EVENTS">🛡️ Clinical, Security & Admins ({clinicalSecurityCount})</option>
             </optgroup>
-            <optgroup label="Hospital Operations">
-              <option value="HOSPITAL_CREATED">HOSPITAL_CREATED</option>
-              <option value="HOSPITAL_UPDATED">HOSPITAL_UPDATED</option>
-              <option value="HOSPITAL_STATUS_CHANGED">HOSPITAL_STATUS_CHANGED</option>
-              <option value="BED_CAPACITY_UPDATED">BED_CAPACITY_UPDATED</option>
-            </optgroup>
-            <optgroup label="Medy Cards & Patients">
-              <option value="MEDY_CARD_ISSUED">MEDY_CARD_ISSUED</option>
-              <option value="MEDY_CARD_BATCH_ISSUED">MEDY_CARD_BATCH_ISSUED</option>
-              <option value="MEDY_CARD_STATUS_CHANGED">MEDY_CARD_STATUS_CHANGED</option>
-              <option value="PATIENT_REGISTERED">PATIENT_REGISTERED</option>
-              <option value="PATIENT_RECORD_ACCESSED">PATIENT_RECORD_ACCESSED</option>
-            </optgroup>
-            <optgroup label="Clinical & Diagnostics">
-              <option value="LAB_TEST_ORDERED">LAB_TEST_ORDERED</option>
-              <option value="LAB_REPORT_VERIFIED">LAB_REPORT_VERIFIED</option>
-              <option value="APPOINTMENT_SCHEDULED">APPOINTMENT_SCHEDULED</option>
-            </optgroup>
-            <optgroup label="Super Admin & Security">
-              <option value="SUPER_ADMIN_LOGIN">SUPER_ADMIN_LOGIN</option>
-              <option value="SUPER_ADMIN_PROFILE_UPDATE">SUPER_ADMIN_PROFILE_UPDATE</option>
-              <option value="SECURITY_POLICY_ENFORCED">SECURITY_POLICY_ENFORCED</option>
-            </optgroup>
+            {distinctActions.length > 0 && (
+              <optgroup label="Logged Actions">
+                {distinctActions.map((act) => (
+                  <option key={act} value={act}>
+                    {act}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
-
-          <div className="super-nav-search" style={{ width: '260px' }}>
-            <Search size={16} className="super-search-icon" />
-            <input
-              type="text"
-              className="super-search-input"
-              placeholder="Search audit trail..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
         </div>
       </div>
 
@@ -308,12 +294,12 @@ const AuditLogs = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((log) => {
+              {filtered.map((log, idx) => {
                 const badgeStyle = getActionBadgeColor(log.action);
                 return (
-                  <tr key={log._id || log.timestamp}>
+                  <tr key={log._id || log.timestamp || idx}>
                     <td style={{ whiteSpace: 'nowrap', color: '#475569', fontSize: '0.82rem' }}>
-                      {new Date(log.timestamp).toLocaleString('en-GB', {
+                      {new Date(log.timestamp || log.createdAt || Date.now()).toLocaleString('en-GB', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
@@ -346,9 +332,29 @@ const AuditLogs = () => {
                     </td>
                     <td style={{ color: '#334155', maxWidth: '340px' }}>{log.details}</td>
                     <td>
-                      <span className={`super-status-pill ${log.status === 'Success' ? 'active' : 'inactive'}`}>
-                        <span className="status-dot"></span>
-                        {log.status}
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          background: log.status === 'Success' ? '#ecfdf5' : log.status === 'Warning' ? '#fffbeb' : '#fef2f2',
+                          color: log.status === 'Success' ? '#047857' : log.status === 'Warning' ? '#b45309' : '#dc2626',
+                          border: `1px solid ${log.status === 'Success' ? '#a7f3d0' : log.status === 'Warning' ? '#fde68a' : '#fecaca'}`,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: log.status === 'Success' ? '#10b981' : log.status === 'Warning' ? '#f59e0b' : '#ef4444',
+                          }}
+                        />
+                        {log.status || 'Success'}
                       </span>
                     </td>
                   </tr>

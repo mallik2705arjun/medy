@@ -104,6 +104,20 @@ const applyForCard = async (req, res) => {
     existing.rejectionReason = '';
     await existing.save();
 
+    try {
+      await AuditLog.create({
+        action: 'PATIENT_CARD_APPLICATION',
+        actor: existing.phone || 'patient_portal',
+        role: 'Patient Applicant',
+        target: `${existing.name} (${finalHospitalName})`,
+        details: `Submitted application for Medy Card (${existing.requestedPlan || 'Silver'} Plan, ₹${Number(existing.requestedCoverage || 500000).toLocaleString()})`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Success',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
+
     return res.status(200).json({
       message: `Medy Card application successfully submitted for registered patient ${existing.name}! ${finalHospitalName} will review and issue your card.`,
       patient: existing,
@@ -306,6 +320,20 @@ const rejectApplication = async (req, res) => {
     patient.applicationStatus = 'Rejected';
     patient.rejectionReason = reason ? reason.trim() : 'Hospital declined the application';
     await patient.save();
+
+    try {
+      await AuditLog.create({
+        action: 'PATIENT_APPLICATION_REJECTED',
+        actor: req.admin?.email || 'admin@medy.com',
+        role: req.admin?.role === 'HOSPITAL_ADMIN' ? 'Hospital Administrator' : 'Super Administrator',
+        target: `${patient.name} (${patient.hospitalName})`,
+        details: `Medy Card application rejected. Reason: ${patient.rejectionReason}`,
+        ipAddress: req.ip || '127.0.0.1',
+        status: 'Warning',
+      });
+    } catch (e) {
+      console.error('AuditLog error:', e.message);
+    }
 
     res.json({
       message: 'Application rejected',

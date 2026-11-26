@@ -9,19 +9,34 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:5000',
         changeOrigin: true,
         secure: false,
+        ws: true,
+        timeout: 60000,
+        proxyTimeout: 60000,
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, res) => {
-            console.warn('[Vite Proxy]: Backend unreachable at http://127.0.0.1:5000.', err.message);
-            if (res && !res.headersSent) {
-              res.writeHead(502, { 'Content-Type': 'application/json' });
-              res.end(
-                JSON.stringify({
-                  message: 'Backend server is unreachable. Please ensure the backend is running on port 5000.',
-                })
-              );
+          proxy.on('error', (err, req, res) => {
+            console.warn(`[Vite Proxy Error] ${req?.method || 'REQ'} ${req?.url || ''}:`, err.message);
+
+            if (res && typeof res.writeHead === 'function' && !res.headersSent && !res.writableEnded) {
+              try {
+                res.writeHead(502, {
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-store',
+                });
+                res.end(
+                  JSON.stringify({
+                    message:
+                      err.code === 'ECONNRESET'
+                        ? 'Backend connection was reset. The server may be restarting, please try again.'
+                        : 'Backend server is unreachable on port 5000. Please ensure the backend is running.',
+                    code: err.code || 'PROXY_ERROR',
+                  })
+                );
+              } catch (writeErr) {
+                // Ignore socket write failures on aborted streams
+              }
             }
           });
         },

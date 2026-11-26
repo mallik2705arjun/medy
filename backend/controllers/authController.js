@@ -40,6 +40,11 @@ const loginAdmin = async (req, res) => {
       return res.status(403).json({ message: 'This administrator account has been deactivated. Please contact the Super Administrator.' });
     }
 
+    if (admin.avatar && admin.avatar.includes('unsplash.com')) {
+      admin.avatar = '';
+      admin.save().catch(() => {});
+    }
+
     try {
       await AuditLog.create({
         action: admin.role === 'HOSPITAL_ADMIN' ? 'HOSPITAL_ADMIN_LOGIN' : 'SUPER_ADMIN_LOGIN',
@@ -62,7 +67,7 @@ const loginAdmin = async (req, res) => {
       role: admin.role || 'MEDY_ADMIN',
       status: admin.status || 'Active',
       dateJoined: admin.dateJoined || admin.createdAt || new Date('2024-01-15'),
-      avatar: admin.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=160&auto=format&fit=crop&q=80',
+      avatar: admin.avatar || '',
       hospitalName: admin.hospitalName || 'Medy Healthcare Central Network',
       token: generateToken(admin._id),
     });
@@ -85,6 +90,11 @@ const getAdminProfile = async (req, res) => {
       return res.status(404).json({ message: 'Admin not found' });
     }
 
+    if (admin.avatar && admin.avatar.includes('unsplash.com')) {
+      admin.avatar = '';
+      admin.save().catch(() => {});
+    }
+
     res.json({
       _id: admin._id,
       adminId: admin.adminId || 'MEDY-ADM-001',
@@ -95,7 +105,7 @@ const getAdminProfile = async (req, res) => {
       role: admin.role || 'MEDY_ADMIN',
       status: admin.status || 'Active',
       dateJoined: admin.dateJoined || admin.createdAt || new Date('2024-01-15'),
-      avatar: admin.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=160&auto=format&fit=crop&q=80',
+      avatar: admin.avatar || '',
       hospitalName: admin.hospitalName || 'Medy Healthcare Central Network',
     });
   } catch (error) {
@@ -141,8 +151,8 @@ const updateAdminProfile = async (req, res) => {
       admin.phone = phone.trim();
     }
 
-    if (avatar) {
-      admin.avatar = avatar;
+    if (avatar !== undefined) {
+      admin.avatar = avatar.trim();
     }
 
     if (status) {
@@ -180,6 +190,11 @@ const updateAdminProfile = async (req, res) => {
     const updatedAdmin = await admin.save();
 
     // Log the profile update in AuditLog
+    if (admin.avatar && admin.avatar.includes('unsplash.com')) {
+      admin.avatar = '';
+      admin.save().catch(() => {});
+    }
+
     try {
       await AuditLog.create({
         action: 'SUPER_ADMIN_PROFILE_UPDATE',
@@ -204,7 +219,7 @@ const updateAdminProfile = async (req, res) => {
       role: updatedAdmin.role || 'MEDY_ADMIN',
       status: updatedAdmin.status || 'Active',
       dateJoined: updatedAdmin.dateJoined || updatedAdmin.createdAt || new Date('2024-01-15'),
-      avatar: updatedAdmin.avatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=160&auto=format&fit=crop&q=80',
+      avatar: updatedAdmin.avatar || '',
       hospitalName: updatedAdmin.hospitalName,
       token: generateToken(updatedAdmin._id),
       message: 'Profile updated successfully',

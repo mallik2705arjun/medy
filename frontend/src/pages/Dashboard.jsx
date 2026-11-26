@@ -25,7 +25,6 @@ import {
   Power,
   X,
   Check,
-  RefreshCw,
   FileText,
   MapPin,
   Phone,
@@ -223,6 +222,8 @@ const Dashboard = () => {
     beds: 350,
     phone: '',
     email: '',
+    adminEmail: '',
+    adminName: '',
     status: 'Active',
   });
 
@@ -278,8 +279,8 @@ const Dashboard = () => {
               timestamp: log.timestamp || new Date().toISOString(),
               color:
                 log.action?.includes('CARD') ? '#0d9488' :
-                log.action?.includes('STATUS') ? '#ea580c' :
-                log.action?.includes('HOSPITAL') ? '#0284c7' : '#7c3aed',
+                  log.action?.includes('STATUS') ? '#ea580c' :
+                    log.action?.includes('HOSPITAL') ? '#0284c7' : '#7c3aed',
             }))
           );
         }
@@ -711,6 +712,8 @@ const Dashboard = () => {
       city: hospitalForm.city || 'New Delhi',
       phone: hospitalForm.phone || '+91 11 2600 0000',
       email: hospitalForm.email || 'info@hospital.medy.health',
+      adminEmail: hospitalForm.adminEmail || hospitalForm.email,
+      adminName: hospitalForm.adminName,
       beds: Number(hospitalForm.beds) || 350,
       bedsOccupied: Math.round(Number(hospitalForm.beds || 350) * 0.7),
       cardsIssuedCount: 0,
@@ -726,6 +729,8 @@ const Dashboard = () => {
       beds: 350,
       phone: '',
       email: '',
+      adminEmail: '',
+      adminName: '',
       status: 'Active',
     });
 
@@ -761,169 +766,131 @@ const Dashboard = () => {
       }}
     >
       {/* =========================================================================
-          SECTIONS 2 & 8: TOP WELCOME BANNER & GLOBAL CONTROLS
+          PERSISTENT TOP NAVBAR & GLOBAL CONTROLS
           ========================================================================= */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #0a1128 0%, #101f42 55%, #1d3557 100%)',
-          borderRadius: '16px',
-          padding: '1.35rem 1.65rem',
-          color: '#ffffff',
-          boxShadow: '0 8px 24px -4px rgba(10, 17, 40, 0.25)',
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.15rem',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxSizing: 'border-box',
-          width: '100%',
-        }}
-      >
-        {/* Subtle radial decorative background glow */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '-60px',
-            right: '-60px',
-            width: '280px',
-            height: '280px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(37, 99, 235, 0) 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* Top Header Row: Welcome Greeting & Top Controls (Hospital Select, Days Select) */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '1rem',
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
-          {/* Platform Identity: Medy Logo & Dashboard Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '11px',
-                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.45)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="3" width="18" height="18" rx="5" fill="rgba(255,255,255,0.22)" />
-                <path d="M12 7V17M7 12H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+      <header className="dashboard-top-navbar">
+        {/* Left: Platform Identity & Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '9px',
+              background: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.45)',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              color: '#ffffff',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="5" fill="rgba(255,255,255,0.22)" />
+              <path d="M12 7V17M7 12H17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
             <h1
               style={{
                 margin: 0,
-                fontSize: '1.65rem',
+                fontSize: '1.25rem',
                 fontWeight: 800,
                 letterSpacing: '-0.02em',
                 color: '#ffffff',
-                lineHeight: 1.15,
+                lineHeight: 1.2,
               }}
             >
               Super Admin Dashboard
             </h1>
           </div>
+        </div>
 
-          {/* Top Controls: Hospital Select, Days Select */}
-          <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* 1. Hospital Select (Logo Only) */}
-            <div
+        {/* Right: Global Navbar Filter Controls */}
+        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* 1. Hospital Select */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              padding: '0 0.75rem',
+              height: '38px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <Building2 size={15} style={{ color: '#38bdf8', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)' }}>Hospital:</span>
+            <select
+              value={selectedHospitalFilter}
+              onChange={(e) => setSelectedHospitalFilter(e.target.value)}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                background: 'rgba(15, 23, 42, 0.55)',
-                border: '1px solid rgba(255, 255, 255, 0.22)',
-                borderRadius: '8px',
-                padding: '0 0.65rem',
-                height: '36px',
-                backdropFilter: 'blur(8px)',
+                height: '100%',
+                fontSize: '0.82rem',
+                background: 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                outline: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                maxWidth: '180px',
               }}
             >
-              <Building2 size={15} style={{ color: '#93c5fd', flexShrink: 0 }} />
-              <select
-                value={selectedHospitalFilter}
-                onChange={(e) => setSelectedHospitalFilter(e.target.value)}
-                style={{
-                  height: '100%',
-                  fontSize: '0.78rem',
-                  background: 'transparent',
-                  color: '#ffffff',
-                  border: 'none',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontFamily: 'inherit',
-                  maxWidth: '180px',
-                }}
-              >
-                <option value="ALL" style={{ background: '#0f172a', color: '#fff' }}>
-                  All Hospitals ({hospitals.length})
+              <option value="ALL" style={{ background: '#0f172a', color: '#ffffff' }}>All Hospitals ({hospitals.length})</option>
+              {hospitals.map((h) => (
+                <option key={h._id || h.code} value={h._id || h.name} style={{ background: '#0f172a', color: '#ffffff' }}>
+                  {h.name}
                 </option>
-                {hospitals.map((h) => (
-                  <option key={h._id || h.code} value={h._id || h.name} style={{ background: '#0f172a', color: '#fff' }}>
-                    {h.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+            </select>
+          </div>
 
-            {/* 2. Days Select (Logo Only) */}
-            <div
+          {/* 2. Days / Date Range Select */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              padding: '0 0.75rem',
+              height: '38px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <Calendar size={15} style={{ color: '#38bdf8', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)' }}>Period:</span>
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.45rem',
-                background: 'rgba(15, 23, 42, 0.55)',
-                border: '1px solid rgba(255, 255, 255, 0.22)',
-                borderRadius: '8px',
-                padding: '0 0.65rem',
-                height: '36px',
-                backdropFilter: 'blur(8px)',
+                height: '100%',
+                fontSize: '0.82rem',
+                background: 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                outline: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontFamily: 'inherit',
               }}
             >
-              <Calendar size={15} style={{ color: '#93c5fd', flexShrink: 0 }} />
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                style={{
-                  height: '100%',
-                  fontSize: '0.78rem',
-                  background: 'transparent',
-                  color: '#ffffff',
-                  border: 'none',
-                  outline: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontFamily: 'inherit',
-                }}
-              >
-                <option value="Today" style={{ background: '#0f172a', color: '#fff' }}>Today</option>
-                <option value="Last 7 Days" style={{ background: '#0f172a', color: '#fff' }}>Last 7 Days</option>
-                <option value="Last 30 Days" style={{ background: '#0f172a', color: '#fff' }}>Last 30 Days</option>
-                <option value="This Month" style={{ background: '#0f172a', color: '#fff' }}>This Month</option>
-              </select>
-            </div>
+              <option value="Today" style={{ background: '#0f172a', color: '#ffffff' }}>Today</option>
+              <option value="Last 7 Days" style={{ background: '#0f172a', color: '#ffffff' }}>Last 7 Days</option>
+              <option value="Last 30 Days" style={{ background: '#0f172a', color: '#ffffff' }}>Last 30 Days</option>
+              <option value="This Month" style={{ background: '#0f172a', color: '#ffffff' }}>This Month</option>
+            </select>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* =========================================================================
           SECTION 3: DASHBOARD STATISTICS CARDS (FOUR MODERN CARDS)
@@ -948,7 +915,7 @@ const Dashboard = () => {
         >
           <div className="metric-info-left">
             <span className="super-metric-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b' }}>
-              Partner Hospitals
+              Hospitals
             </span>
             <span className="super-metric-value" style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a' }}>
               {stats.totalHospitals}
@@ -1542,7 +1509,7 @@ const Dashboard = () => {
               Hospital Management Overview ({filteredHospitals.length})
             </h3>
             <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-              Partner hospitals connected to Medy central network with live bed occupancy & cards
+              hospitals connected to Medy central network with live bed occupancy & cards
             </p>
           </div>
 
@@ -1703,9 +1670,8 @@ const Dashboard = () => {
                       {/* 6. Hospital Status */}
                       <td>
                         <span
-                          className={`super-status-pill ${
-                            hosp.status === 'Active' ? 'active' : 'inactive'
-                          }`}
+                          className={`super-status-pill ${hosp.status === 'Active' ? 'active' : 'inactive'
+                            }`}
                         >
                           <span className="status-dot"></span>
                           {hosp.status || 'Active'}
@@ -1902,9 +1868,8 @@ const Dashboard = () => {
                   {/* Status */}
                   <td>
                     <span
-                      className={`super-status-pill ${
-                        log.status === 'Warning' ? 'warning' : 'active'
-                      }`}
+                      className={`super-status-pill ${log.status === 'Warning' ? 'warning' : 'active'
+                        }`}
                       style={{
                         background: log.status === 'Warning' ? '#fffbeb' : '#ecfdf5',
                         color: log.status === 'Warning' ? '#d97706' : '#059669',
@@ -1944,7 +1909,7 @@ const Dashboard = () => {
                   <Building2 size={20} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add Partner Hospital</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add Hospital</h3>
                   <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Register and affiliate a hospital into the network</span>
                 </div>
               </div>
@@ -2064,6 +2029,54 @@ const Dashboard = () => {
                       value={hospitalForm.email}
                       onChange={(e) => setHospitalForm({ ...hospitalForm, email: e.target.value })}
                     />
+                  </div>
+                </div>
+
+                {/* Hospital Administrator Appointment & Nodemailer Section */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  marginTop: '0.75rem',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.3rem', color: '#0369a1', fontWeight: 600, fontSize: '0.82rem' }}>
+                    <Mail size={15} />
+                    <span>Appoint Hospital Administrator (Nodemailer Email)</span>
+                  </div>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.75rem', color: '#0284c7', lineHeight: 1.4 }}>
+                    Nodemailer will send an official appointment notice with login credentials to this administrator upon registration.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>
+                        Admin Email (Recipient) *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        className="super-search-input"
+                        style={{ width: '100%', height: '36px', padding: '0.4rem 0.65rem', background: '#ffffff' }}
+                        placeholder="admin@hospital.com"
+                        value={hospitalForm.adminEmail}
+                        onChange={(e) => setHospitalForm({ ...hospitalForm, adminEmail: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>
+                        Admin Full Name
+                      </label>
+                      <input
+                        type="text"
+                        className="super-search-input"
+                        style={{ width: '100%', height: '36px', padding: '0.4rem 0.65rem', background: '#ffffff' }}
+                        placeholder="e.g. Dr. Rajesh Sharma"
+                        value={hospitalForm.adminName}
+                        onChange={(e) => setHospitalForm({ ...hospitalForm, adminName: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
