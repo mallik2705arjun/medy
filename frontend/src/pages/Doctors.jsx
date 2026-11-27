@@ -12,6 +12,7 @@ import {
   Star,
   Award,
   Filter,
+  User,
 } from 'lucide-react';
 
 const INITIAL_DOCTORS = [
@@ -25,7 +26,7 @@ const INITIAL_DOCTORS = [
     patients: 430,
     rating: '4.9',
     hospital: 'City Care Hospital',
-    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&auto=format&fit=crop&q=80',
+    avatar: '',
   },
   {
     id: 2,
@@ -37,7 +38,7 @@ const INITIAL_DOCTORS = [
     patients: 610,
     rating: '4.8',
     hospital: 'Apex Heart Center',
-    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=100&auto=format&fit=crop&q=80',
+    avatar: '',
   },
   {
     id: 3,
@@ -49,7 +50,7 @@ const INITIAL_DOCTORS = [
     patients: 290,
     rating: '4.7',
     hospital: 'City Care Hospital',
-    avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&auto=format&fit=crop&q=80',
+    avatar: '',
   },
   {
     id: 4,
@@ -61,7 +62,7 @@ const INITIAL_DOCTORS = [
     patients: 540,
     rating: '5.0',
     hospital: 'Apollo Speciality',
-    avatar: 'https://images.unsplash.com/photo-1594824813524-7df84457e5b5?w=100&auto=format&fit=crop&q=80',
+    avatar: '',
   },
   {
     id: 5,
@@ -73,7 +74,7 @@ const INITIAL_DOCTORS = [
     patients: 380,
     rating: '4.9',
     hospital: 'Metropolitan General',
-    avatar: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=100&auto=format&fit=crop&q=80',
+    avatar: '',
   },
 ];
 
@@ -90,7 +91,7 @@ const Doctors = () => {
     specialty: '',
     experience: '5 Years',
     hospital: 'City Care Hospital',
-    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&auto=format&fit=crop&q=80',
+    avatar: '',
   });
 
   const filtered = doctorsList
@@ -138,7 +139,7 @@ const Doctors = () => {
       specialty: '',
       experience: '5 Years',
       hospital: 'City Care Hospital',
-      avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=100&auto=format&fit=crop&q=80',
+      avatar: '',
     });
   };
 
@@ -354,7 +355,22 @@ const Doctors = () => {
                 <tr key={d.id}>
                   <td>
                     <div className="table-user-cell">
-                      <img src={d.avatar} alt={d.name} className="user-row-avatar" />
+                      <div
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: '#e0f2fe',
+                          border: '1.5px solid #bae6fd',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#0284c7',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <User size={18} />
+                      </div>
                       <div>
                         <div className="user-row-name">{d.name}</div>
                         <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Verified Physician</span>

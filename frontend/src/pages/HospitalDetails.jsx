@@ -27,6 +27,7 @@ import {
   Check,
   X,
   Copy,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import MedyCardPreview from '../components/MedyCardPreview';
@@ -974,14 +975,22 @@ const HospitalDetails = () => {
                     <tr key={adm._id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <img
-                            src={
-                              adm.avatar ||
-                              'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=160&auto=format&fit=crop&q=80'
-                            }
-                            alt={adm.fullName}
-                            style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
-                          />
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: '#e0f2fe',
+                              border: '1px solid #bae6fd',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#0284c7',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <User size={16} />
+                          </div>
                           <div>
                             <strong>{adm.fullName}</strong>
                             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>@{adm.username}</div>

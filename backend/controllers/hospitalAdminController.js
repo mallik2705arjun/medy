@@ -182,9 +182,7 @@ const createHospitalAdmin = async (req, res) => {
       hospitalName: hospital.name,
       hospitalCode: hospital.code,
       status: status || 'Active',
-      avatar:
-        avatar ||
-        'https://images.unsplash.com/photo-1594824813576-4d0f62e873cf?w=160&auto=format&fit=crop&q=80',
+      avatar: (avatar && !avatar.includes('unsplash.com')) ? avatar.trim() : '',
       dateJoined: new Date(),
     });
 

@@ -90,7 +90,7 @@ connectDB().then(async () => {
           hospitalName: defaultHospital.name,
           hospitalCode: defaultHospital.code,
           status: 'Active',
-          avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=160&auto=format&fit=crop&q=80',
+          avatar: '',
           dateJoined: new Date(),
         },
         {
@@ -106,7 +106,7 @@ connectDB().then(async () => {
           hospitalName: defaultHospital.name,
           hospitalCode: defaultHospital.code,
           status: 'Active',
-          avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80',
+          avatar: '',
           dateJoined: new Date(),
         },
       ]);

@@ -133,7 +133,7 @@ const createHospital = async (req, res) => {
           hospitalName: newHospital.name,
           hospitalCode: newHospital.code,
           status: 'Active',
-          avatar: 'https://images.unsplash.com/photo-1594824813576-4d0f62e873cf?w=160&auto=format&fit=crop&q=80',
+          avatar: '',
           dateJoined: new Date(),
         });
         assignedAdmin = newAdmin;

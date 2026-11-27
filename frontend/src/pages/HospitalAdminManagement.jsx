@@ -19,11 +19,11 @@ import {
   KeyRound,
   Power,
   Check,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1594824813576-4d0f62e873cf?w=160&auto=format&fit=crop&q=80';
+const DEFAULT_AVATAR = '';
 
 const HospitalAdminManagement = () => {
   const { admin } = useAuth();
@@ -57,7 +57,7 @@ const HospitalAdminManagement = () => {
     hospitalId: '',
     designation: 'Hospital Administrator',
     status: 'Active',
-    avatar: DEFAULT_AVATAR,
+    avatar: '',
   });
 
   // Edit form state
@@ -210,7 +210,7 @@ const HospitalAdminManagement = () => {
       hospitalId: item.hospitalId?._id || item.hospitalId || '',
       designation: item.designation || 'Hospital Administrator',
       status: item.status || 'Active',
-      avatar: item.avatar || DEFAULT_AVATAR,
+      avatar: item.avatar || '',
       password: '',
     });
     setShowEditPassword(false);
@@ -580,17 +580,22 @@ const HospitalAdminManagement = () => {
                     {/* Administrator column */}
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <img
-                          src={item.avatar || DEFAULT_AVATAR}
-                          alt={item.fullName}
+                        <div
                           style={{
                             width: '38px',
                             height: '38px',
                             borderRadius: '50%',
-                            objectFit: 'cover',
-                            border: '2px solid #e2e8f0',
+                            background: '#e0f2fe',
+                            border: '1.5px solid #bae6fd',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#0284c7',
+                            flexShrink: 0,
                           }}
-                        />
+                        >
+                          <User size={18} />
+                        </div>
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '0.86rem', color: '#0f172a' }}>
                             {item.fullName}
